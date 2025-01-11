@@ -1,0 +1,8 @@
+[{"className": "Binary",
+  "Fields": [["Expr", "left"], ["Token", "op"], ["Expr", "right"]]},
+ {"className": "Grouping",
+  "Fields": [["Expr", "expr"]]},
+ {"className":"Literal",
+  "Fields": [["Object", "value"]]},
+ {"className":"Unary",
+  "Fields": [["Token", "op"], ["Expr", "right"]]}]
