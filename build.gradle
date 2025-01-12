@@ -4,6 +4,7 @@ plugins {
 
 dependencies {
     testImplementation 'org.testng:testng:7.9.0'
+    testImplementation 'org.slf4j:slf4j-nop:2.0.16'
 }
 
 repositories {
@@ -38,31 +39,25 @@ test {
 task generateAST(type: Exec, group: "Custom") {
     commandLine "echo"
     doLast {
-	def resourceDir = file("src/main/java/com/Jlox/")
-	def outDir = file("src/main/java/com/Jlox/")
-	def inFiles = resourceDir.listFiles().findAll { it.name.endsWith('.json') }
-	def outFiles = inFiles.collect { file -> file.getAbsolutePath().replace('.json', '.java') }
+        def resourceDir = file("src/main/java/com/Jlox/")
+        def outDir = file("src/main/java/com/Jlox/")
+        def inFiles = resourceDir.listFiles().findAll { it.name.endsWith('.json') }
+        def outFiles = inFiles.collect { file -> file.getAbsolutePath().replace('.json', '.java') }
 
-	exec { commandLine 'python', 'src/main/python/generateAST.py', resourceDir, outDir }
+        exec { commandLine 'python', 'src/main/python/generateAST.py', resourceDir, outDir }
 
-	javaexec {
-	    main = '-jar';
-	    args = ['google-java-format-1.25.2-all-deps.jar', '--replace', outFiles.join(" ")];
-
-	}
+        javaexec {
+            main = '-jar'
+            args = ['google-java-format-1.25.2-all-deps.jar', '--replace', outFiles.join(" ")]
+        }
     }
 }
 
-task myFormat(type: Exec) {
-    commandLine "echo"
-    doLast {
-	def allJavaFiles = (sourceSets.main.java.srcDirs + sourceSets.test.java.srcDirs)
-            .collect { dir -> fileTree(dir).files }
-            .flatten()
+task myFormat(type: JavaExec) {
+    def allJavaFiles = (sourceSets.main.java.srcDirs + sourceSets.test.java.srcDirs)
+        .collect { dir -> fileTree(dir).files }
+        .flatten()
 
-	javaexec {
-	    main = '-jar';
-	    args = ['google-java-format-1.25.2-all-deps.jar', '--replace', allJavaFiles.join(" ")];
-	}
-    }
+    main = '-jar'
+    args = ['google-java-format-1.25.2-all-deps.jar', '--replace'] + allJavaFiles
 }

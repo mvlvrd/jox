@@ -11,45 +11,36 @@ class Interpreter implements Expr.Visitor<Object> {
     PairTypes pairTypes = getPairTypes(lobj, robj);
     String ltype = pairTypes.ltype;
     String rtype = pairTypes.rtype;
+    final boolean b = Objects.equals(ltype, "f") || Objects.equals(rtype, "f");
+    final boolean ii = "i".equals(ltype) && "i".equals(rtype);
     return switch (expr.op.type) {
       case PLUS -> {
-        if (Objects.equals(ltype, "s") || Objects.equals(rtype, "s"))
-          yield (String) lobj + (String) robj;
-        else if (Objects.equals(ltype, "f") && Objects.equals(rtype, "f"))
-          yield (double) lobj + (double) robj;
-        else if (Objects.equals(ltype, "i") && Objects.equals(rtype, "i"))
-          yield (int) lobj + (int) robj;
+        if ("s".equals(ltype) || "s".equals(rtype)) yield (String) lobj + (String) robj;
+        else if ("f".equals(ltype) && "f".equals(rtype)) yield (double) lobj + (double) robj;
+        else if (ii) yield (int) lobj + (int) robj;
         else throw new RunTimeEvalError(expr.op, "Operation not valid for these operands.");
       }
-      case MINUS ->
-          (lobj instanceof Double || robj instanceof Double)
-              ? (double) lobj - (double) robj
-              : (int) lobj - (int) robj;
-      case EQUAL_EQUAL -> (boolean) lobj == (boolean) robj;
+      case MINUS -> b ? (double) lobj - (double) robj : (int) lobj - (int) robj;
+      case EQUAL_EQUAL -> lobj.equals(robj);
       case LESS -> {
-        if (Objects.equals(ltype, "f") || Objects.equals(rtype, "f"))
-          yield (double) lobj < (double) robj;
-        else if (Objects.equals(ltype, "i") && Objects.equals(rtype, "i"))
-          yield (int) lobj < (int) robj;
+        if (b) yield (double) lobj < (double) robj;
+        else if ("i".equals(ltype) && "i".equals(rtype)) yield (int) lobj < (int) robj;
         else throw new RunTimeEvalError(expr.op, "Operation not valid for these operands.");
       }
       case GREATER -> {
-        if (Objects.equals(ltype, "f") || Objects.equals(rtype, "f"))
-          yield (double) lobj > (double) robj;
+        if (b) yield (double) lobj > (double) robj;
         else if (Objects.equals(ltype, "i") && Objects.equals(rtype, "i"))
           yield (int) lobj > (int) robj;
         else throw new RunTimeEvalError(expr.op, "Operation not valid for these operands.");
       }
       case LESS_EQUAL -> {
-        if (Objects.equals(ltype, "f") || Objects.equals(rtype, "f"))
-          yield (double) lobj <= (double) robj;
+        if (b) yield (double) lobj <= (double) robj;
         else if (Objects.equals(ltype, "i") && Objects.equals(rtype, "i"))
           yield (int) lobj <= (int) robj;
         else throw new RunTimeEvalError(expr.op, "Operation not valid for these operands.");
       }
       case GREATER_EQUAL -> {
-        if (Objects.equals(ltype, "f") || Objects.equals(rtype, "f"))
-          yield (double) lobj >= (double) robj;
+        if (b) yield (double) lobj >= (double) robj;
         else if (Objects.equals(ltype, "i") && Objects.equals(rtype, "i"))
           yield (int) lobj >= (int) robj;
         else throw new RunTimeEvalError(expr.op, "Operation not valid for these operands.");

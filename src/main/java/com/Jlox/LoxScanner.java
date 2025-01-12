@@ -177,7 +177,7 @@ public class LoxScanner {
 
   void addStringToken(int origLine) {
     String lexeme = src.substring(start + 1, current - 1);
-    tokens.add(new Token(STRING, lexeme, null, origLine));
+    tokens.add(new Token(STRING, lexeme, lexeme, origLine));
   }
 
   void addToken(TokenType tokenType, String lexeme, Object obj) {
