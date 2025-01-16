@@ -1,0 +1,11 @@
+{"subClasses": [
+  {"className": "Expression",
+  "Fields": [["Expr", "expr"]]},
+  {"className": "Print",
+    "Fields": [["Expr", "expr"]]},
+  {"className":  "Var",
+    "Fields": [["Token", "name"],["Expr", "initializer"]]},
+  {"className":  "Block",
+  "Fields": [["List<Stmt>", "stmts"]]}],
+"imports": ["java.util.List"]
+}

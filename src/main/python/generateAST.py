@@ -5,7 +5,7 @@ import sys
 import json
 
 ASTTemplate = """package com.Jlox;
-
+{imports}
 abstract class {baseName} {{
 
     {visitorInterface}
@@ -14,12 +14,12 @@ abstract class {baseName} {{
 
     {body}
 
-}}
+    }}
 """
 
 visitorTemplate = """interface Visitor<R> {{
         {visitorBody}
-}}
+    }}
 """
 
 
@@ -40,37 +40,49 @@ static class {className} extends {baseName} {{
 """
 
 
-def _nlJoin(method, inList, n_spaces=4, space=' '):
-    sep = f"\n{n_spaces*space}"
-    return sep.join([method(_) for _ in inList])
-
+def _nlJoin(method, inList, n_indents=4, enclosed=False):
+    indent = 4*' '
+    sep = f"\n{n_indents*indent}"
+    sep.join([method(_) for _ in inList])
+    out = sep.join([method(_) for _ in inList])
+    if enclosed:
+        return '\n' + sep.join([method(_) for _ in inList]) + '\n'
+    else:
+        return sep.join([method(_) for _ in inList])
 
 def getSubClass(baseName, sbc):
     className = sbc["className"]
     Fields = sbc["Fields"]
     baseName = baseName
 
-    FIELDS = _nlJoin(lambda x: f"final {x[0]} {x[1]};", Fields)
+    FIELDS = _nlJoin(lambda x: f"final {x[0]} {x[1]};", Fields, n_indents=1)
     args = ", ".join([f"{x[0]} {x[1]}" for x in Fields])
-    initBody = _nlJoin(lambda x: f"this.{x[1]} = {x[1]};", Fields)
+    initBody = _nlJoin(lambda x: f"this.{x[1]} = {x[1]};", Fields, n_indents=2)
 
     return SubClassTemplate.format(className=className, baseName=baseName, FIELDS=FIELDS, args=args, initBody=initBody,)
 
+def getImport(x):
+    return f"import {x};"
+
 def getVisitor(baseName, sbc):
-    visitorBody = _nlJoin(lambda x: f"R visit{x['className']}{baseName}({x['className']} {baseName.lower()});", sbc)
+    visitorBody = _nlJoin(lambda x: f"R visit{x['className']}{baseName}({x['className']} {baseName.lower()});", sbc, n_indents=2)
     return visitorTemplate.format(visitorBody=visitorBody)
 
-def generateAST(baseName: str, subClasses: list):
+def generateAST(baseName: str, subClasses: list, importedPackages: list):
+    importedPackages = importedPackages
     body = _nlJoin(lambda x: getSubClass(baseName, x), subClasses)
     visitorInterface = getVisitor(baseName=baseName, sbc=subClasses)
-    return ASTTemplate.format(baseName=baseName, body=body, visitorInterface=visitorInterface)
+    imports = _nlJoin(getImport, importedPackages, enclosed=True) if importedPackages else ''
+    return ASTTemplate.format(baseName=baseName, body=body, visitorInterface=visitorInterface, imports=imports)
 
 def getJSON(fileName) -> str:
     baseName = Path(fileName).stem
     with open(fileName) as inFile:
-        subClasses = json.load(inFile)
+        classInfo = json.load(inFile)
+        subClasses = classInfo["subClasses"]
+        importedPackages = classInfo["imports"] if "imports" in classInfo else []
 
-    return generateAST(baseName=baseName, subClasses=subClasses)        
+    return generateAST(baseName=baseName, subClasses=subClasses, importedPackages=importedPackages)
 
 
 if __name__ == "__main__":

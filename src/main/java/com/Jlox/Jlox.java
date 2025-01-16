@@ -8,70 +8,82 @@ import java.nio.file.Path;
 import java.util.List;
 
 public class Jlox {
-  private static boolean hadError = false;
-  private static boolean hadRuntimeError = false;
-  private static final Interpreter interpreter = new Interpreter();
+    private static boolean hadError = false;
+    private static boolean hadRuntimeError = false;
+    private static final Interpreter interpreter = new Interpreter();
 
-  public static void run(String str) {
-    LoxScanner scanner = new LoxScanner(str);
-    List<Token> tokens = scanner.scanTokens();
-    Parser parser = new Parser(tokens);
-    Expr expression = parser.parse();
-
-    if (hadError) return;
-    // System.out.println(new AstPrinter().print(expression)); //TODO: This is just a helper.
-    interpreter.interpret(expression);
-  }
-
-  public static void runFile(String filePath) throws IOException {
-    runFile(Path.of(filePath));
-  }
-
-  public static void runFile(Path filePath) throws IOException {
-    run(Files.readString(filePath));
-    if (hadError) System.exit(65);
-    if (hadRuntimeError) System.exit(70);
-  }
-
-  public static void runPrompt() throws IOException {
-    try (InputStreamReader input = new InputStreamReader(System.in);
-        BufferedReader reader = new BufferedReader(input)) {
-      while (true) {
-        System.out.print("> ");
-        String line = reader.readLine();
-        if (line == null) break;
-        run(line);
-        hadError = false;
-      }
+    public static void run(String str) {
+        LoxScanner scanner = new LoxScanner(str);
+        List<Token> tokens = scanner.scanTokens();
+        Parser parser = new Parser(tokens);
+        // TODO: This should be more robust.
+        if (isListOfStmts(tokens)) {
+            List<Stmt> stmts = parser.parse();
+            if (hadError) return;
+            interpreter.interpret(stmts);
+        } else {
+            Expr expr = parser.parseSingleExprs();
+            // System.out.println(new AstPrinter().print(expression)); //TODO: This is just a
+            // helper.
+            if (hadError) return;
+            interpreter.interpret(expr);
+        }
     }
-  }
 
-  static void error(int line, String errorMsg) {
-    hadError = true;
-    System.err.println("Error at line: " + line + errorMsg);
-  }
-
-  static void runTimeError(RunTimeEvalError err) {
-    hadRuntimeError = true;
-    System.err.println(err.getMessage() + "\n[" + err.token.line + "]");
-  }
-
-  public static void main(String[] args) throws IOException {
-    if (args.length > 2) {
-      System.err.println(UsageMessg);
-      System.exit(64);
-    } else if (args.length == 2) {
-      if (args[0].equals("-c")) {
-        run(args[1]);
-      } else {
-        System.err.println(UsageMessg);
-      }
-    } else if (args.length == 1) {
-      runFile(args[0]);
-    } else {
-      runPrompt();
+    public static void runFile(String filePath) throws IOException {
+        runFile(Path.of(filePath));
     }
-  }
 
-  private static final String UsageMessg = "Usage: Jlox [Script|-c command]";
+    public static void runFile(Path filePath) throws IOException {
+        run(Files.readString(filePath));
+        if (hadError) System.exit(65);
+        if (hadRuntimeError) System.exit(70);
+    }
+
+    public static void runPrompt() throws IOException {
+        try (InputStreamReader input = new InputStreamReader(System.in);
+                BufferedReader reader = new BufferedReader(input)) {
+            while (true) {
+                System.out.print("> ");
+                String line = reader.readLine();
+                if (line == null) break;
+                run(line);
+                hadError = false;
+            }
+        }
+    }
+
+    static void error(int line, String errorMsg) {
+        hadError = true;
+        System.err.println("Error at line: " + line + errorMsg);
+    }
+
+    static void runTimeError(RunTimeEvalError err) {
+        hadRuntimeError = true;
+        System.err.println(err.getMessage() + "\n[" + err.token.line + "]");
+    }
+
+    public static void main(String[] args) throws IOException {
+        if (args.length > 2) {
+            System.err.println(UsageMessg);
+            System.exit(64);
+        } else if (args.length == 2) {
+            if (args[0].equals("-c")) {
+                run(args[1]);
+            } else {
+                System.err.println(UsageMessg);
+            }
+        } else if (args.length == 1) {
+            runFile(args[0]);
+        } else {
+            runPrompt();
+        }
+    }
+
+    private static boolean isListOfStmts(List<Token> tokens) {
+        return (tokens.get(tokens.size() - 2).type == TokenType.SEMICOLON ||
+                tokens.getLast().type == TokenType.RIGHT_BRACE);
+    }
+
+    private static final String UsageMessg = "Usage: Jlox [Script|-c command]";
 }

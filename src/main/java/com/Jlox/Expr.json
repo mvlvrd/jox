@@ -1,8 +1,14 @@
-[{"className": "Binary",
+{"subClasses":[
+ {"className": "Assign",
+ "Fields":[["Token", "name"],["Expr", "value"]]},
+ {"className": "Binary",
   "Fields": [["Expr", "left"], ["Token", "op"], ["Expr", "right"]]},
  {"className": "Grouping",
   "Fields": [["Expr", "expr"]]},
- {"className":"Literal",
+ {"className": "Literal",
   "Fields": [["Object", "value"]]},
- {"className":"Unary",
-  "Fields": [["Token", "op"], ["Expr", "right"]]}]
+ {"className": "Unary",
+  "Fields": [["Token", "op"], ["Expr", "right"]]},
+ {"className": "Variable",
+ "Fields": [["Token", "name"]]}]
+ }

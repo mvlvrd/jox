@@ -2,132 +2,198 @@ package com.Jlox;
 
 import static com.Jlox.TokenType.*;
 
+import java.util.ArrayList;
 import java.util.List;
 
 class Parser {
-  private final List<Token> tokens;
-  private int current;
+    private final List<Token> tokens;
+    private int current;
 
-  Parser(List<Token> tokens) {
-    this.tokens = tokens;
-    this.current = 0;
-  }
-
-  Expr parse() {
-    try {
-      return expression();
-    } catch (ParseError err) {
-      return null;
+    Parser(List<Token> tokens) {
+        this.tokens = tokens;
+        this.current = 0;
     }
-  }
 
-  private Expr expression() {
-    return equality();
-  }
-
-  private Expr equality() {
-    Expr expr = comparison();
-    while (match(BANG_EQUAL, EQUAL_EQUAL)) {
-      Token operator = previous();
-      Expr right = comparison();
-      expr = new Expr.Binary(expr, operator, right);
+    Expr parseSingleExprs() {
+        return expression();
     }
-    return expr;
-  }
 
-  private Expr comparison() {
-    Expr expr = term();
-    while (match(GREATER, GREATER_EQUAL, LESS, LESS_EQUAL)) {
-      Token operator = previous();
-      Expr right = term();
-      expr = new Expr.Binary(expr, operator, right);
+    List<Stmt> parse() {
+        List<Stmt> statements = new ArrayList<>();
+        while (!EoF()) {
+            statements.add(declaration());
+        }
+        return statements;
     }
-    return expr;
-  }
 
-  private Expr term() {
-    Expr expr = factor();
-    while (match(MINUS, PLUS)) {
-      Token operator = previous();
-      Expr right = factor();
-      expr = new Expr.Binary(expr, operator, right);
+    private Stmt declaration() {
+        try {
+            if (match(VAR)) return varDeclaration();
+            else return statement();
+        } catch (ParseError err) {
+            // synchronize();
+            return null;
+        }
     }
-    return expr;
-  }
 
-  private Expr factor() {
-    Expr expr = unary();
-    while (match(SLASH, STAR)) {
-      Token operator = previous();
-      Expr right = unary();
-      expr = new Expr.Binary(expr, operator, right);
+    private Stmt varDeclaration() {
+        Token name = consume(IDENTIFIER, "Expected variable name");
+        Expr initializer = match(EQUAL) ? expression() : null;
+        consume(SEMICOLON, "Expect ';' after variable declaration.");
+        return new Stmt.Var(name, initializer);
     }
-    return expr;
-  }
 
-  private Expr unary() {
-    if (match(BANG, MINUS)) {
-      Token operator = previous();
-      Expr right = unary();
-      return new Expr.Unary(operator, right);
+    private Stmt statement() {
+        try {
+            if (match(PRINT)) return printStatement();
+            if (match(LEFT_BRACE)) return blockStatement();
+            return expressionStatement();
+        } catch (ParseError err) {
+            // synchronize();
+            return null;
+        }
     }
-    return primary();
-  }
 
-  private Expr primary() {
-    if (match(FALSE)) return new Expr.Literal(false);
-    else if (match(TRUE)) return new Expr.Literal(true);
-    else if (match(NIL)) return new Expr.Literal(null);
-    else if (match(FLOAT, INTEGER, STRING)) return new Expr.Literal(previous().literal);
-    else if (match(LEFT_PAREN)) {
-      Expr expr = expression();
-      consume(RIGHT_PAREN, "Expect ')' after expression.");
-      return new Expr.Grouping(expr);
+    private Stmt printStatement() {
+        Expr value = expression();
+        consume(SEMICOLON, "Expect ';' after value.");
+        return new Stmt.Print(value);
     }
-    throw error(peek(), ": Expect expression.");
-  }
 
-  private boolean match(TokenType... types) {
-    for (TokenType type : types) {
-      if (check(type)) {
-        advance();
-        return true;
-      }
+    private Stmt blockStatement() {
+        List<Stmt> stmts = new ArrayList<>();
+        while (!(check(RIGHT_BRACE) || EoF())) stmts.add(declaration());
+        consume(RIGHT_BRACE, "Expect closing brace '}'");
+        return new Stmt.Block(stmts);
     }
-    return false;
-  }
 
-  private Token advance() {
-    if (!EoF()) current++;
-    return previous();
-  }
+    private Stmt expressionStatement() {
+        Expr value = expression();
+        consume(SEMICOLON, "Expect ';' after value.");
+        return new Stmt.Expression(value);
+    }
 
-  private Token previous() {
-    return tokens.get(current - 1);
-  }
+    private Expr expression() {
+        return assignment();
+    }
 
-  private boolean check(TokenType type) {
-    if (EoF()) return false;
-    return peek().type == type;
-  }
+    private Expr assignment() {
+        Expr expr = equality();
+        if (match(EQUAL)) {
+            Token equals = previous();
+            Expr value = assignment();
+            if (value instanceof Expr.Variable) {
+                Token name = ((Expr.Variable) value).name;
+                return new Expr.Assign(name, value);
+            }
+            error(equals, "Invalid assignment target");
+        }
+        return expr;
+    }
 
-  private boolean EoF() {
-    return peek().type == EOF;
-  }
+    private Expr equality() {
+        Expr expr = comparison();
+        while (match(BANG_EQUAL, EQUAL_EQUAL)) {
+            Token operator = previous();
+            Expr right = comparison();
+            expr = new Expr.Binary(expr, operator, right);
+        }
+        return expr;
+    }
 
-  private Token peek() {
-    return tokens.get(current);
-  }
+    private Expr comparison() {
+        Expr expr = term();
+        while (match(GREATER, GREATER_EQUAL, LESS, LESS_EQUAL)) {
+            Token operator = previous();
+            Expr right = term();
+            expr = new Expr.Binary(expr, operator, right);
+        }
+        return expr;
+    }
 
-  private Token consume(TokenType type, String msg) {
-    if (check(type)) return advance();
-    else throw error(peek(), msg);
-  }
+    private Expr term() {
+        Expr expr = factor();
+        while (match(MINUS, PLUS)) {
+            Token operator = previous();
+            Expr right = factor();
+            expr = new Expr.Binary(expr, operator, right);
+        }
+        return expr;
+    }
 
-  private static ParseError error(Token token, String msg) {
-    Jlox.error(token.line, msg);
-    return new ParseError();
-  }
+    private Expr factor() {
+        Expr expr = unary();
+        while (match(SLASH, STAR)) {
+            Token operator = previous();
+            Expr right = unary();
+            expr = new Expr.Binary(expr, operator, right);
+        }
+        return expr;
+    }
 
-  static class ParseError extends RuntimeException {}
+    private Expr unary() {
+        if (match(BANG, MINUS)) {
+            Token operator = previous();
+            Expr right = unary();
+            return new Expr.Unary(operator, right);
+        }
+        return primary();
+    }
+
+    private Expr primary() {
+        if (match(FALSE)) return new Expr.Literal(false);
+        else if (match(TRUE)) return new Expr.Literal(true);
+        else if (match(NIL)) return new Expr.Literal(null);
+        else if (match(FLOAT, INTEGER, STRING)) return new Expr.Literal(previous().literal);
+        else if (match(LEFT_PAREN)) {
+            Expr expr = expression();
+            consume(RIGHT_PAREN, "Expect ')' after expression.");
+            return new Expr.Grouping(expr);
+        } else if (match(IDENTIFIER)) return new Expr.Variable(previous());
+        throw error(peek(), ": Expect expression.");
+    }
+
+    private boolean match(TokenType... types) {
+        for (TokenType type : types) {
+            if (check(type)) {
+                advance();
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private Token advance() {
+        if (!EoF()) current++;
+        return previous();
+    }
+
+    private Token previous() {
+        return tokens.get(current - 1);
+    }
+
+    private boolean check(TokenType type) {
+        if (EoF()) return false;
+        return peek().type == type;
+    }
+
+    private boolean EoF() {
+        return peek().type == EOF;
+    }
+
+    private Token peek() {
+        return tokens.get(current);
+    }
+
+    private Token consume(TokenType type, String msg) {
+        if (check(type)) return advance();
+        else throw error(peek(), msg);
+    }
+
+    private static ParseError error(Token token, String msg) {
+        Jlox.error(token.line, msg);
+        return new ParseError();
+    }
+
+    static class ParseError extends RuntimeException {}
 }

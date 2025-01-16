@@ -1,37 +1,47 @@
 package com.Jlox;
 
 class AstPrinter implements Expr.Visitor<String> {
-  String print(Expr expr) {
-    return expr.accept(this);
-  }
-
-  @Override
-  public String visitBinaryExpr(Expr.Binary expr) {
-    return parenthesize(expr.op.lexeme, expr.left, expr.right);
-  }
-
-  @Override
-  public String visitGroupingExpr(Expr.Grouping expr) {
-    return parenthesize("group", expr.expr);
-  }
-
-  @Override
-  public String visitLiteralExpr(Expr.Literal expr) {
-    if (expr.value == null) return "nil";
-    else return expr.value.toString();
-  }
-
-  @Override
-  public String visitUnaryExpr(Expr.Unary expr) {
-    return parenthesize(expr.op.lexeme, expr.right);
-  }
-
-  private String parenthesize(String name, Expr... exprs) {
-    StringBuilder builder = new StringBuilder();
-    builder.append("(").append(name);
-    for (Expr expr : exprs) {
-      builder.append(" ").append(expr.accept(this));
+    String print(Expr expr) {
+        return expr.accept(this);
     }
-    return builder.append(")").toString();
-  }
+
+    @Override
+    public String visitAssignExpr(Expr.Assign expr) {
+        return parenthesize(expr.name.lexeme, expr.value);
+    }
+
+    @Override
+    public String visitVariableExpr(Expr.Variable expr) {
+        return parenthesize(expr.name.lexeme);
+    }
+
+    @Override
+    public String visitBinaryExpr(Expr.Binary expr) {
+        return parenthesize(expr.op.lexeme, expr.left, expr.right);
+    }
+
+    @Override
+    public String visitGroupingExpr(Expr.Grouping expr) {
+        return parenthesize("group", expr.expr);
+    }
+
+    @Override
+    public String visitLiteralExpr(Expr.Literal expr) {
+        if (expr.value == null) return "nil";
+        else return expr.value.toString();
+    }
+
+    @Override
+    public String visitUnaryExpr(Expr.Unary expr) {
+        return parenthesize(expr.op.lexeme, expr.right);
+    }
+
+    private String parenthesize(String name, Expr... exprs) {
+        StringBuilder builder = new StringBuilder();
+        builder.append("(").append(name);
+        for (Expr expr : exprs) {
+            builder.append(" ").append(expr.accept(this));
+        }
+        return builder.append(")").toString();
+    }
 }

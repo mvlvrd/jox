@@ -13,7 +13,7 @@ repositories {
 
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(23)
+        languageVersion = JavaLanguageVersion.of 23
     }
 }
 
@@ -22,7 +22,7 @@ application {
 }
 
 test {
-    useTestNG() {
+    useTestNG {
         suites 'testng.xml'
     }
 
@@ -33,31 +33,18 @@ test {
         showStandardStreams = true
     }
     
-    jvmArgs('-Dresource.dir=src/test/resources/')
+    jvmArgs '-Dresource.dir=src/test/resources/'
 }
 
 task generateAST(type: Exec, group: "Custom") {
-    commandLine "echo"
-    doLast {
-        def resourceDir = file("src/main/java/com/Jlox/")
-        def outDir = file("src/main/java/com/Jlox/")
-        def inFiles = resourceDir.listFiles().findAll { it.name.endsWith('.json') }
-        def outFiles = inFiles.collect { file -> file.getAbsolutePath().replace('.json', '.java') }
+    def resourceDir = file "src/main/java/com/Jlox/"
+    def outDir = file "src/main/java/com/Jlox/"
 
-        exec { commandLine 'python', 'src/main/python/generateAST.py', resourceDir, outDir }
-
-        javaexec {
-            main = '-jar'
-            args = ['google-java-format-1.25.2-all-deps.jar', '--replace', outFiles.join(" ")]
-        }
-    }
+    commandLine 'python', 'src/main/python/generateAST.py', resourceDir, outDir
 }
 
 task myFormat(type: JavaExec) {
-    def allJavaFiles = (sourceSets.main.java.srcDirs + sourceSets.test.java.srcDirs)
-        .collect { dir -> fileTree(dir).files }
-        .flatten()
-
-    main = '-jar'
-    args = ['google-java-format-1.25.2-all-deps.jar', '--replace'] + allJavaFiles
+    def outFiles = (sourceSets.main.java.srcDirs + sourceSets.test.java.srcDirs).collect {dir -> fileTree(dir).files }.flatten().findAll {it.name.endsWith('.java')}
+    mainClass = '-jar'
+    args = ['google-java-format-1.25.2-all-deps.jar', '--replace', '--aosp'] + outFiles
 }
