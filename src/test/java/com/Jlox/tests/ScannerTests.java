@@ -17,6 +17,8 @@ import java.io.PrintStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 
 public class ScannerTests {
@@ -71,7 +73,7 @@ public class ScannerTests {
     }
 
     @Test(dataProvider = "Test1")
-    public void InterpreterTest2(String input, String expectedOutput) {
+    public void InterpreterTest1(String input, String expectedOutput) {
         OutputStream consoleContent = new ByteArrayOutputStream();
         System.setOut(new PrintStream(consoleContent));
         Jlox.run(input);
@@ -80,12 +82,16 @@ public class ScannerTests {
     }
 
     @DataProvider(name = "Test2")
-    String[][] Test2Data() {
-        return new String[][] {{"Res2.lox", "Res2.txt"}};
+    Iterator<String[]> Test2Data() {
+        ArrayList<String[]> testData = new ArrayList<>();
+        for (int i = 1; i <= 3; i++) {
+            testData.add(new String[]{"Res"+i+".lox", "Res"+i+".txt"});
+        }
+        return testData.iterator();
     }
 
     @Test(dataProvider = "Test2")
-    public void InterpreterTest3(String inFileName, String outFileName) throws IOException {
+    public void InterpreterTest2(String inFileName, String outFileName) throws IOException {
         Path inFilePath = Paths.get(resourcesDir, inFileName);
         OutputStream consoleContent = new ByteArrayOutputStream();
         System.setOut(new PrintStream(consoleContent));

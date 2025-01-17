@@ -3,9 +3,14 @@
   "Fields": [["Expr", "expr"]]},
   {"className": "Print",
     "Fields": [["Expr", "expr"]]},
-  {"className":  "Var",
+  {"className": "Var",
     "Fields": [["Token", "name"],["Expr", "initializer"]]},
-  {"className":  "Block",
-  "Fields": [["List<Stmt>", "stmts"]]}],
+  {"className": "Block",
+  "Fields": [["List<Stmt>", "stmts"]]},
+  {"className": "If",
+  "Fields": [["Expr", "condition"], ["Stmt", "thenBranch"], ["Stmt", "elseBranch"]]},
+  {"className":  "While",
+  "Fields": [["Expr", "condition"], ["Stmt", "body"]]}
+],
 "imports": ["java.util.List"]
 }

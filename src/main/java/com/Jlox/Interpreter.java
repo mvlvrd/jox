@@ -8,6 +8,21 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
     private Environment environment = new Environment();
 
     @Override
+    public Void visitIfStmt(Stmt.If stmt) {
+        if (truthy(evaluate(stmt.condition))) execute(stmt.thenBranch);
+        else execute(stmt.elseBranch);
+        return null;
+    }
+
+    @Override
+    public Void visitWhileStmt(Stmt.While stmt) {
+        while (truthy(evaluate(stmt.condition))) {
+            execute(stmt.body);
+        }
+        return null;
+    }
+
+    @Override
     public Object visitAssignExpr(Expr.Assign expr) {
         Object val = evaluate(expr.value);
         environment.assign(expr.name, val);
@@ -51,6 +66,15 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
     @Override
     public Object visitVariableExpr(Expr.Variable expr) {
         return environment.get(expr.name);
+    }
+
+    @Override
+    public Object visitLogicalExpr(Expr.Logical expr) {
+        Object left = evaluate(expr.left);
+        if (expr.op.type == TokenType.OR) {
+            if (truthy(left)) return left;
+        } else if (!truthy(left)) return left;
+        return evaluate(expr.right);
     }
 
     @Override
@@ -172,6 +196,12 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
         String ltype = getType(lobj);
         String rtype = getType(robj);
         return new PairTypes(ltype, rtype);
+    }
+
+    private Boolean truthy(Object obj) {
+        if (obj == null) return false;
+        else if (obj instanceof Boolean) return (boolean) obj;
+        return false; //TODO: Decide on truthiness.
     }
 
     static record PairTypes(String ltype, String rtype) {}

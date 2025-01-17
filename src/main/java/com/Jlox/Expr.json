@@ -10,5 +10,8 @@
  {"className": "Unary",
   "Fields": [["Token", "op"], ["Expr", "right"]]},
  {"className": "Variable",
- "Fields": [["Token", "name"]]}]
- }
+ "Fields": [["Token", "name"]]},
+ {"className": "Logical",
+  "Fields": [["Expr", "left"], ["Token", "op"], ["Expr", "right"]]}
+]
+}

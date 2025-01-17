@@ -21,9 +21,8 @@ public class Environment {
     }
 
     Object get(Token name) {
-        if (values.containsKey(name.lexeme))
-            return values.get(name.lexeme);
-        else if (enclosing != null) return enclosing.get(name);
+        if (values.containsKey(name.lexeme)) return values.get(name.lexeme);
+        if (enclosing != null) return enclosing.get(name);
         throw new RunTimeEvalError(name, "Undefined variable:'" + name.lexeme + "'.");
     }
 
@@ -33,6 +32,7 @@ public class Environment {
             return;
         } else if (enclosing != null) {
             enclosing.assign(name, val);
+            return;
         }
         throw new RunTimeEvalError(name, "Undefined variable: '" + name.lexeme + "'.");
     }

@@ -23,8 +23,7 @@ public class Jlox {
             interpreter.interpret(stmts);
         } else {
             Expr expr = parser.parseSingleExprs();
-            // System.out.println(new AstPrinter().print(expression)); //TODO: This is just a
-            // helper.
+            // System.out.println(new AstPrinter().print(expression)); TODO: This is just a helper.
             if (hadError) return;
             interpreter.interpret(expr);
         }
@@ -81,8 +80,8 @@ public class Jlox {
     }
 
     private static boolean isListOfStmts(List<Token> tokens) {
-        return (tokens.get(tokens.size() - 2).type == TokenType.SEMICOLON ||
-                tokens.getLast().type == TokenType.RIGHT_BRACE);
+        TokenType tokenType = tokens.get(tokens.size()-2).type;
+        return (tokenType == TokenType.SEMICOLON || tokenType == TokenType.RIGHT_BRACE);
     }
 
     private static final String UsageMessg = "Usage: Jlox [Script|-c command]";

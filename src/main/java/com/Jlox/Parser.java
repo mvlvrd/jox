@@ -3,6 +3,7 @@ package com.Jlox;
 import static com.Jlox.TokenType.*;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 class Parser {
@@ -46,7 +47,10 @@ class Parser {
     private Stmt statement() {
         try {
             if (match(PRINT)) return printStatement();
-            if (match(LEFT_BRACE)) return blockStatement();
+            if (match(LEFT_BRACE)) return new Stmt.Block(block());
+            if (match(IF)) return ifStmt();
+            if (match(WHILE)) return whileStmt();
+            if (match(FOR)) return forStmt();
             return expressionStatement();
         } catch (ParseError err) {
             // synchronize();
@@ -60,11 +64,47 @@ class Parser {
         return new Stmt.Print(value);
     }
 
-    private Stmt blockStatement() {
+    private List<Stmt> block() {
         List<Stmt> stmts = new ArrayList<>();
         while (!(check(RIGHT_BRACE) || EoF())) stmts.add(declaration());
         consume(RIGHT_BRACE, "Expect closing brace '}'");
-        return new Stmt.Block(stmts);
+        return stmts;
+    }
+
+    private Stmt ifStmt() {
+        consume(LEFT_PAREN, "Expect opening paren '('");
+        Expr condition = expression();
+        consume(RIGHT_PAREN, "Expect closing paren ')'");
+        Stmt ifBranch = statement();
+        Stmt elseBranch = match(ELSE) ? statement() : null;
+        return new Stmt.If(condition, ifBranch, elseBranch);
+    }
+
+    private Stmt whileStmt() {
+        consume(LEFT_PAREN, "Expect opening paren '('");
+        Expr condition = expression();
+        consume(RIGHT_PAREN, "Expect closing paren ')'");
+        Stmt body = statement();
+        return new Stmt.While(condition, body);
+    }
+
+    private Stmt forStmt() {
+        consume(LEFT_PAREN, "Expect opening paren '('");
+        Stmt init = null;
+        if (match(VAR)) init = varDeclaration();
+        else if (!match(SEMICOLON)) init = expressionStatement();
+        Expr condition = check(SEMICOLON) ? null : expression();
+        consume(SEMICOLON, "Expect ';' after loop condition.");
+        Expr increment = check(RIGHT_PAREN) ? null : expression();
+        consume(RIGHT_PAREN, "Expect closing paren ')'");
+        Stmt body = statement();
+
+        if (increment != null) body = new Stmt.Block(Arrays.asList(body, new Stmt.Expression(increment)));
+        if (condition == null) condition = new Expr.Literal(true);
+        body = new Stmt.While(condition, body);
+        if (init!= null) body = new Stmt.Block(Arrays.asList(init, body));
+
+        return body;
     }
 
     private Stmt expressionStatement() {
@@ -78,12 +118,12 @@ class Parser {
     }
 
     private Expr assignment() {
-        Expr expr = equality();
+        Expr expr = or();
         if (match(EQUAL)) {
             Token equals = previous();
             Expr value = assignment();
-            if (value instanceof Expr.Variable) {
-                Token name = ((Expr.Variable) value).name;
+            if (expr instanceof Expr.Variable) {
+                Token name = ((Expr.Variable) expr).name;
                 return new Expr.Assign(name, value);
             }
             error(equals, "Invalid assignment target");
@@ -97,6 +137,26 @@ class Parser {
             Token operator = previous();
             Expr right = comparison();
             expr = new Expr.Binary(expr, operator, right);
+        }
+        return expr;
+    }
+
+    private Expr or() {
+        Expr expr = and();
+        while (match(OR)) {
+            Token op = previous();
+            Expr right = and();
+            expr = new Expr.Logical(expr, op, right);
+        }
+        return expr;
+    }
+
+    private Expr and() {
+        Expr expr = equality();
+        while (match(AND)) {
+            Token op = previous();
+            Expr right = equality();
+            expr = new Expr.Logical(expr, op, right);
         }
         return expr;
     }
