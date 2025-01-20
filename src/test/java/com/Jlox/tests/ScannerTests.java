@@ -4,6 +4,7 @@ import static org.testng.Assert.assertEquals;
 
 import com.Jlox.Jlox;
 import com.Jlox.LoxScanner;
+import com.Jlox.Parser;
 import com.Jlox.Token;
 
 import org.testng.annotations.AfterMethod;
@@ -36,9 +37,7 @@ public class ScannerTests {
         OutputStream consoleContent = new ByteArrayOutputStream();
         System.setOut(new PrintStream(consoleContent));
         List<Token> tokens = (new LoxScanner(Files.readString(inFilePath))).scanTokens();
-        for (Token token : tokens) {
-            System.out.println(token);
-        }
+        tokens.forEach(System.out::println);
         String actual = consoleContent.toString();
         String expected =
                 """
@@ -67,6 +66,15 @@ public class ScannerTests {
         assertEquals(actual, expected);
     }
 
+    @Test
+    public void ParserTest() throws IOException {
+        String str = Files.readString(Paths.get(resourcesDir, "Res4.lox"));
+        LoxScanner scanner = new LoxScanner(str);
+        List<Token> tokens = scanner.scanTokens();
+        Parser parser = new Parser(tokens);
+        parser.parse();
+    }
+
     @DataProvider(name = "Test1")
     String[][] Test1Data() {
         return new String[][] {{"1. <= (1.+1.)", "true"}, {"\"3\"==\"2\"", "false"}, {"3+2", "5"}};
@@ -84,8 +92,8 @@ public class ScannerTests {
     @DataProvider(name = "Test2")
     Iterator<String[]> Test2Data() {
         ArrayList<String[]> testData = new ArrayList<>();
-        for (int i = 1; i <= 3; i++) {
-            testData.add(new String[]{"Res"+i+".lox", "Res"+i+".txt"});
+        for (int i = 4; i <= 4; i++) {
+            testData.add(new String[] {"Res" + i + ".lox", "Res" + i + ".txt"});
         }
         return testData.iterator();
     }

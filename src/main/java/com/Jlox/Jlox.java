@@ -11,19 +11,25 @@ public class Jlox {
     private static boolean hadError = false;
     private static boolean hadRuntimeError = false;
     private static final Interpreter interpreter = new Interpreter();
+    private static final AstPrinter astPrinter = new AstPrinter();
+
+    static int MAX_ARITY = 255;
+    static boolean DEBUG_MODE = false;
 
     public static void run(String str) {
         LoxScanner scanner = new LoxScanner(str);
         List<Token> tokens = scanner.scanTokens();
+        if (DEBUG_MODE) tokens.forEach(System.out::println);
         Parser parser = new Parser(tokens);
         // TODO: This should be more robust.
         if (isListOfStmts(tokens)) {
             List<Stmt> stmts = parser.parse();
+            if (DEBUG_MODE) System.out.println(stmts.stream().map(astPrinter::print));
             if (hadError) return;
             interpreter.interpret(stmts);
         } else {
-            Expr expr = parser.parseSingleExprs();
-            // System.out.println(new AstPrinter().print(expression)); TODO: This is just a helper.
+            Expr expr = parser.parseSingleExpr();
+            if (DEBUG_MODE) System.out.println(astPrinter.print(expr));
             if (hadError) return;
             interpreter.interpret(expr);
         }
@@ -54,7 +60,7 @@ public class Jlox {
 
     static void error(int line, String errorMsg) {
         hadError = true;
-        System.err.println("Error at line: " + line + errorMsg);
+        System.err.println("Error at line: " + line + " " + errorMsg);
     }
 
     static void runTimeError(RunTimeEvalError err) {
@@ -80,7 +86,7 @@ public class Jlox {
     }
 
     private static boolean isListOfStmts(List<Token> tokens) {
-        TokenType tokenType = tokens.get(tokens.size()-2).type;
+        TokenType tokenType = tokens.get(tokens.size() - 2).type;
         return (tokenType == TokenType.SEMICOLON || tokenType == TokenType.RIGHT_BRACE);
     }
 

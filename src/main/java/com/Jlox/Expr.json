@@ -12,6 +12,9 @@
  {"className": "Variable",
  "Fields": [["Token", "name"]]},
  {"className": "Logical",
-  "Fields": [["Expr", "left"], ["Token", "op"], ["Expr", "right"]]}
-]
+  "Fields": [["Expr", "left"], ["Token", "op"], ["Expr", "right"]]},
+ {"className": "Call",
+  "Fields": [["Expr","callee"],["Token","lastParen"],["List<Expr>","args"]]}
+],
+"imports": ["java.util.List"]
 }

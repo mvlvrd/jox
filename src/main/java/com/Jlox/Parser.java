@@ -1,25 +1,27 @@
 package com.Jlox;
 
+import static com.Jlox.Jlox.MAX_ARITY;
 import static com.Jlox.TokenType.*;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-class Parser {
+public class Parser {
     private final List<Token> tokens;
     private int current;
 
-    Parser(List<Token> tokens) {
+    public Parser(List<Token> tokens) {
         this.tokens = tokens;
         this.current = 0;
     }
 
-    Expr parseSingleExprs() {
+    Expr parseSingleExpr() {
         return expression();
     }
 
-    List<Stmt> parse() {
+    /*TODO: This only needs to be public for testing: Make package private?*/
+    public List<Stmt> parse() {
         List<Stmt> statements = new ArrayList<>();
         while (!EoF()) {
             statements.add(declaration());
@@ -30,18 +32,41 @@ class Parser {
     private Stmt declaration() {
         try {
             if (match(VAR)) return varDeclaration();
+            else if (match(FUN)) return funDeclaration();
             else return statement();
         } catch (ParseError err) {
-            // synchronize();
+            synchronize();
             return null;
         }
     }
 
     private Stmt varDeclaration() {
-        Token name = consume(IDENTIFIER, "Expected variable name");
+        Token name = consume(IDENTIFIER, "Expect variable name");
         Expr initializer = match(EQUAL) ? expression() : null;
         consume(SEMICOLON, "Expect ';' after variable declaration.");
         return new Stmt.Var(name, initializer);
+    }
+
+    private Stmt funDeclaration() {
+        Token name = consume(IDENTIFIER, "Expect function variable name");
+        consume(LEFT_PAREN, "Expect opening paren '('");
+        List<Token> parameters = parseParameters();
+        consume(RIGHT_PAREN, "Expect closing paren ')'");
+        consume(LEFT_BRACE, "Expect opening brace '{'");
+        List<Stmt> body = block();
+        return new Stmt.Function(name, parameters, body);
+    }
+
+    List<Token> parseParameters() {
+        List<Token> params = new ArrayList<>();
+        while (!check(RIGHT_PAREN)) {
+            if (params.size() == MAX_ARITY)
+                error(peek(), "Can't have more than " + MAX_ARITY + " arguments.");
+            params.add(consume(IDENTIFIER, "Expect parameter name."));
+            if (check(RIGHT_PAREN)) break;
+            consume(COMMA, "Missing comma between parameters");
+        }
+        return params;
     }
 
     private Stmt statement() {
@@ -51,11 +76,19 @@ class Parser {
             if (match(IF)) return ifStmt();
             if (match(WHILE)) return whileStmt();
             if (match(FOR)) return forStmt();
+            if (match(RETURN)) return returnStmt();
             return expressionStatement();
         } catch (ParseError err) {
-            // synchronize();
+            synchronize();
             return null;
         }
+    }
+
+    private Stmt returnStmt() {
+        Token keyword = previous();
+        Expr expr = check(SEMICOLON) ? null : expression();
+        consume(SEMICOLON, "Expect ';' after return value.");
+        return new Stmt.Return(keyword, expr);
     }
 
     private Stmt printStatement() {
@@ -99,10 +132,11 @@ class Parser {
         consume(RIGHT_PAREN, "Expect closing paren ')'");
         Stmt body = statement();
 
-        if (increment != null) body = new Stmt.Block(Arrays.asList(body, new Stmt.Expression(increment)));
+        if (increment != null)
+            body = new Stmt.Block(Arrays.asList(body, new Stmt.Expression(increment)));
         if (condition == null) condition = new Expr.Literal(true);
         body = new Stmt.While(condition, body);
-        if (init!= null) body = new Stmt.Block(Arrays.asList(init, body));
+        if (init != null) body = new Stmt.Block(Arrays.asList(init, body));
 
         return body;
     }
@@ -197,7 +231,35 @@ class Parser {
             Expr right = unary();
             return new Expr.Unary(operator, right);
         }
-        return primary();
+        return call();
+    }
+
+    private Expr call() {
+        Expr expr = primary();
+
+        while (true) {
+            if (match(LEFT_PAREN)) {
+                List<Expr> args = finishCall();
+                Token lastParen =
+                        consume(RIGHT_PAREN, "Missing closing parentheses in function call.");
+                expr = new Expr.Call(expr, lastParen, args);
+            } else break;
+        }
+
+        return expr;
+    }
+
+    private List<Expr> finishCall() {
+        List<Expr> args = new ArrayList<>();
+        while (!match(RIGHT_PAREN)) {
+            if (args.size() == MAX_ARITY) {
+                error(peek(), "Can't have more than " + MAX_ARITY + " arguments.");
+            }
+            args.add(expression());
+            if (check(RIGHT_PAREN)) break;
+            consume(COMMA, "Missing comma between arguments.");
+        }
+        return args;
     }
 
     private Expr primary() {
@@ -235,6 +297,19 @@ class Parser {
     private boolean check(TokenType type) {
         if (EoF()) return false;
         return peek().type == type;
+    }
+
+    private void synchronize() {
+        advance();
+        while (!EoF()) {
+            if (previous().type == SEMICOLON) return;
+            switch (peek().type) {
+                case CLASS, FUN, VAR, FOR, IF, WHILE, PRINT:
+                case RETURN:
+                    return;
+            }
+            advance();
+        }
     }
 
     private boolean EoF() {
