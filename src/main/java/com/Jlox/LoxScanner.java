@@ -43,6 +43,7 @@ public class LoxScanner {
         keywords.put("true", TRUE);
         keywords.put("var", VAR);
         keywords.put("while", WHILE);
+        keywords.put("break", BREAK);
     }
 
     public LoxScanner(String src) {

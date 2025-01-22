@@ -1,5 +1,7 @@
-fun scope(a) {var a="SSS"; return a;}
-print scope(4);
+fun scope(a) {
+    return a;
+}
+print scope("SSS");
 
 fun add(a,b,c) {print a+b+c;} //Comments
 add(1,2,3);

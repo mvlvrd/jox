@@ -2,7 +2,7 @@
 <suite name="Test Suite">
     <test name="Test">
         <classes>
-	  <class name="com.Jlox.tests.ScannerTests"/>
-        </classes>>
+	  <class name="com.Jlox.tests.SafeTests"/>
+        </classes>
     </test>
 </suite>

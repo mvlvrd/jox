@@ -16,6 +16,14 @@ public class Jlox {
     static int MAX_ARITY = 255;
     static boolean DEBUG_MODE = false;
 
+    private static OperationMode opMode;
+
+    enum OperationMode {
+        SCRIPT,
+        CONSOLE,
+        COMMAND
+    }
+
     public static void run(String str) {
         LoxScanner scanner = new LoxScanner(str);
         List<Token> tokens = scanner.scanTokens();
@@ -25,6 +33,9 @@ public class Jlox {
         if (isListOfStmts(tokens)) {
             List<Stmt> stmts = parser.parse();
             if (DEBUG_MODE) System.out.println(stmts.stream().map(astPrinter::print));
+            if (hadError) return;
+            Resolver resolver = new Resolver(interpreter);
+            resolver.resolve(stmts);
             if (hadError) return;
             interpreter.interpret(stmts);
         } else {
@@ -41,8 +52,8 @@ public class Jlox {
 
     public static void runFile(Path filePath) throws IOException {
         run(Files.readString(filePath));
-        if (hadError) System.exit(65);
-        if (hadRuntimeError) System.exit(70);
+        if (hadError) throw new LoxError(65);
+        if (hadRuntimeError) throw new LoxError(70);
     }
 
     public static void runPrompt() throws IOException {
@@ -63,25 +74,41 @@ public class Jlox {
         System.err.println("Error at line: " + line + " " + errorMsg);
     }
 
-    static void runTimeError(RunTimeEvalError err) {
-        hadRuntimeError = true;
-        System.err.println(err.getMessage() + "\n[" + err.token.line + "]");
+    static void error(Token token, String errorMsg) {
+        hadError = true;
+        System.err.println("Error at line: " + token.line + ": " + token.lexeme + ". " + errorMsg);
     }
 
-    public static void main(String[] args) throws IOException {
+    static void runTimeError(RunTimeEvalError err) {
+        hadRuntimeError = true;
+        System.err.println(err.getMessage() + "\n[Line:" + err.token.line + "]");
+    }
+
+    private static void checkArgs(String[] args) throws IOException {
         if (args.length > 2) {
             System.err.println(UsageMessg);
-            System.exit(64);
+            throw new LoxError(64);
         } else if (args.length == 2) {
             if (args[0].equals("-c")) {
+                opMode = OperationMode.COMMAND;
                 run(args[1]);
             } else {
                 System.err.println(UsageMessg);
             }
         } else if (args.length == 1) {
+            opMode = OperationMode.SCRIPT;
             runFile(args[0]);
         } else {
+            opMode = OperationMode.CONSOLE;
             runPrompt();
+        }
+    }
+
+    public static void main(String[] args) throws IOException {
+        try {
+            checkArgs(args);
+        } catch (LoxError err) {
+            System.exit(err.exitCode);
         }
     }
 

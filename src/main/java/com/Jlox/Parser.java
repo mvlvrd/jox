@@ -77,11 +77,19 @@ public class Parser {
             if (match(WHILE)) return whileStmt();
             if (match(FOR)) return forStmt();
             if (match(RETURN)) return returnStmt();
+            if (match(BREAK)) return breakStmt();
             return expressionStatement();
         } catch (ParseError err) {
             synchronize();
             return null;
         }
+    }
+
+    private Stmt breakStmt() {
+        Token keyword = previous();
+        Token name = check(SEMICOLON) ? null : consume(IDENTIFIER, "Expect loop name");
+        consume(SEMICOLON, "Expect ';' after break.");
+        return new Stmt.Break(keyword, name);
     }
 
     private Stmt returnStmt() {
@@ -118,7 +126,7 @@ public class Parser {
         Expr condition = expression();
         consume(RIGHT_PAREN, "Expect closing paren ')'");
         Stmt body = statement();
-        return new Stmt.While(condition, body);
+        return new Stmt.While(condition, body, null);
     }
 
     private Stmt forStmt() {
@@ -135,7 +143,7 @@ public class Parser {
         if (increment != null)
             body = new Stmt.Block(Arrays.asList(body, new Stmt.Expression(increment)));
         if (condition == null) condition = new Expr.Literal(true);
-        body = new Stmt.While(condition, body);
+        body = new Stmt.While(condition, body, null);
         if (init != null) body = new Stmt.Block(Arrays.asList(init, body));
 
         return body;
@@ -240,8 +248,7 @@ public class Parser {
         while (true) {
             if (match(LEFT_PAREN)) {
                 List<Expr> args = finishCall();
-                Token lastParen =
-                        consume(RIGHT_PAREN, "Missing closing parentheses in function call.");
+                Token lastParen = consume(RIGHT_PAREN, "Expect ')' after arguments.");
                 expr = new Expr.Call(expr, lastParen, args);
             } else break;
         }
@@ -251,10 +258,9 @@ public class Parser {
 
     private List<Expr> finishCall() {
         List<Expr> args = new ArrayList<>();
-        while (!match(RIGHT_PAREN)) {
-            if (args.size() == MAX_ARITY) {
+        while (!check(RIGHT_PAREN)) {
+            if (args.size() == MAX_ARITY)
                 error(peek(), "Can't have more than " + MAX_ARITY + " arguments.");
-            }
             args.add(expression());
             if (check(RIGHT_PAREN)) break;
             consume(COMMA, "Missing comma between arguments.");

@@ -1,12 +1,24 @@
 package com.Jlox;
 
+import com.Jlox.NativeFunctions.Clock;
+
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+
+import javax.swing.*;
 
 public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
 
     final Environment globals = new Environment();
+
+    {
+        globals.define("clock", new Clock());
+    }
+
     private Environment environment = globals;
+    private final Map<Expr, Integer> locals = new HashMap<>();
 
     void interpret(Expr expr) {
         try {
@@ -33,6 +45,10 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
 
     private void execute(Stmt stmt) {
         stmt.accept(this);
+    }
+
+    void resolve(Expr expr, int depth) {
+        locals.put(expr, depth);
     }
 
     void executeBlock(List<Stmt> stmts, Environment environment) {
@@ -63,8 +79,13 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
 
     @Override
     public Void visitWhileStmt(Stmt.While stmt) {
-        while (truthy(evaluate(stmt.condition))) {
-            execute(stmt.body);
+        try {
+            while (truthy(evaluate(stmt.condition))) {
+                execute(stmt.body);
+            }
+        } catch (Break ignored) {
+            if (!((ignored.name == null && stmt.name == null)
+                    || ignored.name.lexeme == stmt.name.lexeme)) throw ignored;
         }
         return null;
     }
@@ -76,9 +97,19 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
     }
 
     @Override
+    public Void visitBreakStmt(Stmt.Break stmt) {
+        throw new Break(stmt.name);
+    }
+
+    @Override
     public Object visitAssignExpr(Expr.Assign expr) {
         Object val = evaluate(expr.value);
-        environment.assign(expr.name, val);
+        Integer distance = locals.get(expr);
+        if (distance != null) {
+            environment.assignAt(distance, expr.name, val);
+        } else {
+            globals.assign(expr.name, val);
+        }
         return val;
     }
 
@@ -129,7 +160,7 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
 
     @Override
     public Object visitVariableExpr(Expr.Variable expr) {
-        return environment.get(expr.name);
+        return lookUpVariable(expr.name, expr);
     }
 
     @Override
@@ -151,57 +182,69 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
         return switch (expr.op.type) {
             case PLUS -> {
                 Object object;
-                if (ltype.equals("f") && rtype == "f") object = (double) lobj + (double) robj;
-                else if (ltype == "f" && rtype == "i") object = (double) lobj + (int) robj;
-                else if (ltype == "i" && rtype == "f") object = (int) lobj + (double) robj;
-                else if (ltype == "i" && rtype == "i") object = (int) lobj + (int) robj;
-                else if (ltype == "s" && rtype == "s") object = lobj + (String) robj;
+                if (ltype.equals("f") && rtype.equals("f")) object = (double) lobj + (double) robj;
+                else if (ltype.equals("f") && rtype.equals("i"))
+                    object = (double) lobj + (int) robj;
+                else if (ltype.equals("i") && rtype.equals("f"))
+                    object = (int) lobj + (double) robj;
+                else if (ltype.equals("i") && rtype.equals("i")) object = (int) lobj + (int) robj;
+                else if (ltype.equals("s") && rtype.equals("s")) object = lobj + (String) robj;
                 else throw new RunTimeEvalError(expr.op, "Operation not valid for these operands.");
                 yield object;
             }
             case MINUS -> {
                 Object object;
-                if (ltype == "f" && rtype == "f") object = (double) lobj - (double) robj;
-                else if (ltype == "f" && rtype == "i") object = (double) lobj - (int) robj;
-                else if (ltype == "i" && rtype == "f") object = (int) lobj - (double) robj;
-                else if (ltype == "i" && rtype == "i") object = (int) lobj - (int) robj;
+                if (ltype.equals("f") && rtype.equals("f")) object = (double) lobj - (double) robj;
+                else if (ltype.equals("f") && rtype.equals("i"))
+                    object = (double) lobj - (int) robj;
+                else if (ltype.equals("i") && rtype.equals("f"))
+                    object = (int) lobj - (double) robj;
+                else if (ltype.equals("i") && rtype.equals("i")) object = (int) lobj - (int) robj;
                 else throw new RunTimeEvalError(expr.op, "Operation not valid for these operands.");
                 yield object;
             }
             case EQUAL_EQUAL -> lobj.equals(robj);
             case LESS -> {
                 Object object;
-                if (ltype == "f" && rtype == "f") object = (double) lobj < (double) robj;
-                else if (ltype == "f" && rtype == "i") object = (double) lobj < (int) robj;
-                else if (ltype == "i" && rtype == "f") object = (int) lobj < (double) robj;
-                else if (ltype == "i" && rtype == "i") object = (int) lobj < (int) robj;
+                if (ltype.equals("f") && rtype.equals("f")) object = (double) lobj < (double) robj;
+                else if (ltype.equals("f") && rtype.equals("i"))
+                    object = (double) lobj < (int) robj;
+                else if (ltype.equals("i") && rtype.equals("f"))
+                    object = (int) lobj < (double) robj;
+                else if (ltype.equals("i") && rtype.equals("i")) object = (int) lobj < (int) robj;
                 else throw new RunTimeEvalError(expr.op, "Operation not valid for these operands.");
                 yield object;
             }
             case GREATER -> {
                 Object object;
-                if (ltype == "f" && rtype == "f") object = (double) lobj > (double) robj;
-                else if (ltype == "f" && rtype == "i") object = (double) lobj > (int) robj;
-                else if (ltype == "i" && rtype == "f") object = (int) lobj > (double) robj;
-                else if (ltype == "i" && rtype == "i") object = (int) lobj > (int) robj;
+                if (ltype.equals("f") && rtype.equals("f")) object = (double) lobj > (double) robj;
+                else if (ltype.equals("f") && rtype.equals("i"))
+                    object = (double) lobj > (int) robj;
+                else if (ltype.equals("i") && rtype.equals("f"))
+                    object = (int) lobj > (double) robj;
+                else if (ltype.equals("i") && rtype.equals("i")) object = (int) lobj > (int) robj;
                 else throw new RunTimeEvalError(expr.op, "Operation not valid for these operands.");
                 yield object;
             }
             case LESS_EQUAL -> {
                 Object object;
-                if (ltype == "f" && rtype == "f") object = (double) lobj <= (double) robj;
-                else if (ltype == "f" && rtype == "i") object = (double) lobj <= (int) robj;
-                else if (ltype == "i" && rtype == "f") object = (int) lobj <= (double) robj;
-                else if (ltype == "i" && rtype == "i") object = (int) lobj <= (int) robj;
+                if (ltype.equals("f") && rtype.equals("f")) object = (double) lobj <= (double) robj;
+                else if (ltype.equals("f") && rtype.equals("i"))
+                    object = (double) lobj <= (int) robj;
+                else if (ltype.equals("i") && rtype.equals("f"))
+                    object = (int) lobj <= (double) robj;
+                else if (ltype.equals("i") && rtype.equals("i")) object = (int) lobj <= (int) robj;
                 else throw new RunTimeEvalError(expr.op, "Operation not valid for these operands.");
                 yield object;
             }
             case GREATER_EQUAL -> {
                 Object object;
-                if (ltype == "f" && rtype == "f") object = (double) lobj >= (double) robj;
-                else if (ltype == "f" && rtype == "i") object = (double) lobj >= (int) robj;
-                else if (ltype == "i" && rtype == "f") object = (int) lobj >= (double) robj;
-                else if (ltype == "i" && rtype == "i") object = (int) lobj >= (int) robj;
+                if (ltype.equals("f") && rtype.equals("f")) object = (double) lobj >= (double) robj;
+                else if (ltype.equals("f") && rtype.equals("i"))
+                    object = (double) lobj >= (int) robj;
+                else if (ltype.equals("i") && rtype.equals("f"))
+                    object = (int) lobj >= (double) robj;
+                else if (ltype.equals("i") && rtype.equals("i")) object = (int) lobj >= (int) robj;
                 else throw new RunTimeEvalError(expr.op, "Operation not valid for these operands.");
                 yield object;
             }
@@ -248,5 +291,10 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
         if (obj == null) return false;
         else if (obj instanceof Boolean) return (boolean) obj;
         return false; // TODO: Decide on truthiness.
+    }
+
+    private Object lookUpVariable(Token name, Expr expr) {
+        Integer distance = locals.get(expr);
+        return distance == null ? globals.get(name) : environment.getAt(distance, name.lexeme);
     }
 }

@@ -10,11 +10,13 @@
   {"className": "If",
   "Fields": [["Expr", "condition"], ["Stmt", "thenBranch"], ["Stmt", "elseBranch"]]},
   {"className":  "While",
-  "Fields": [["Expr", "condition"], ["Stmt", "body"]]},
+  "Fields": [["Expr", "condition"], ["Stmt", "body"], ["Token", "name"]]},
   {"className": "Function",
   "Fields": [["Token", "name"], ["List<Token>", "params"], ["List<Stmt>","body"]]},
   {"className": "Return",
-  "Fields": [["Token", "keyword"], ["Expr", "value"]]}
+  "Fields": [["Token", "keyword"], ["Expr", "value"]]},
+  {"className":  "Break",
+  "Fields":  [["Token", "keyword"], ["Token", "name"]]}
 ],
 "imports": ["java.util.List"]
 }
