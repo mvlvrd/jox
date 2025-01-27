@@ -17,6 +17,21 @@ class AstPrinter implements Expr.Visitor<String>, Stmt.Visitor<String> {
     }
 
     @Override
+    public String visitGetExpr(Expr.Get expr) {
+        return "";
+    }
+
+    @Override
+    public String visitSetExpr(Expr.Set expr) {
+        return "";
+    }
+
+    @Override
+    public String visitThisExpr(Expr.This expr) {
+        return parenthesize(expr.keyword.lexeme);
+    }
+
+    @Override
     public String visitAssignExpr(Expr.Assign expr) {
         return parenthesize(expr.name.lexeme, expr.value);
     }
@@ -98,6 +113,11 @@ class AstPrinter implements Expr.Visitor<String>, Stmt.Visitor<String> {
 
     @Override
     public String visitBreakStmt(Stmt.Break stmt) {
+        return "";
+    }
+
+    @Override
+    public String visitClassStmt(Stmt.Class stmt) {
         return "";
     }
 

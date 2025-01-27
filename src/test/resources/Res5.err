@@ -1,1 +1,1 @@
-Error at line: 22: break. Can't return from top-level code.
+Error at line: 22: break. Can't break outside while- or for- loop.

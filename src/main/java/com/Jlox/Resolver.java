@@ -7,23 +7,39 @@ import java.util.Stack;
 
 public class Resolver implements Stmt.Visitor<Void>, Expr.Visitor<Void> {
     private final Interpreter interpreter;
-    private final Stack<Map<String, Boolean>> scopes = new Stack<>();
+    private final Stack<Map<String, VARSTATE>> scopes = new Stack<>();
     private FunctionType currentFunction = FunctionType.NONE;
     private LoopType currentLoop = LoopType.NONE;
+    private ClassType currentClass = ClassType.NONE;
 
-    Resolver(Interpreter interpreter) {
-        this.interpreter = interpreter;
+    private enum VARSTATE {
+        DECLARED,
+        DEFINED,
+        USED
     }
 
     private static enum FunctionType {
         NONE,
-        FUNCTION
+        FUNCTION,
+        METHOD,
+        INIT
     }
 
     private static enum LoopType {
         NONE,
         LOOP
     }
+
+    private static enum ClassType {
+        NONE,
+        CLASS
+    }
+
+    Resolver(Interpreter interpreter) {
+        this.interpreter = interpreter;
+    }
+
+
 
     void resolve(List<Stmt> stmts) {
         for (Stmt stmt : stmts) resolve(stmt);
@@ -70,7 +86,7 @@ public class Resolver implements Stmt.Visitor<Void>, Expr.Visitor<Void> {
 
     @Override
     public Void visitVariableExpr(Expr.Variable expr) {
-        if (!scopes.isEmpty() && scopes.peek().get(expr.name.lexeme) == Boolean.FALSE) {
+        if (!scopes.isEmpty() && scopes.peek().get(expr.name.lexeme) == VARSTATE.DECLARED) {
             Jlox.error(expr.name, "Can't read local variable in its own initializer.");
         }
         resolveLocal(expr, expr.name);
@@ -90,6 +106,12 @@ public class Resolver implements Stmt.Visitor<Void>, Expr.Visitor<Void> {
         for (Expr arg : expr.args) {
             resolve(arg);
         }
+        return null;
+    }
+
+    @Override
+    public Void visitGetExpr(Expr.Get expr) {
+        resolve(expr.obj);
         return null;
     }
 
@@ -148,17 +170,53 @@ public class Resolver implements Stmt.Visitor<Void>, Expr.Visitor<Void> {
     }
 
     @Override
+    public Void visitClassStmt(Stmt.Class stmt) {
+        ClassType enclosingClass = currentClass;
+        currentClass = ClassType.CLASS;
+        declare(stmt.name);
+        beginScope();
+        scopes.peek().put("this", VARSTATE.DEFINED);
+        for (Stmt.Function func: stmt.methods) {
+            resolveFunction(func, func.name.lexeme.equals("init") ? FunctionType.INIT : FunctionType.METHOD);
+        }
+        define(stmt.name);
+        finishScope();
+        currentClass = enclosingClass;
+        return null;
+    }
+
+    @Override
+    public Void visitSetExpr(Expr.Set expr) {
+        resolve(expr.value);
+        resolve(expr.obj);
+        return null;
+    }
+
+    @Override
+    public Void visitThisExpr(Expr.This expr) {
+        if (currentClass != ClassType.CLASS) {
+            Jlox.error(expr.keyword, "Can not use 'this' outside a class.");
+            return null;
+        }
+        resolveLocal(expr, expr.keyword);
+        return null;
+    }
+
+    @Override
     public Void visitReturnStmt(Stmt.Return stmt) {
         if (currentFunction == FunctionType.NONE)
             Jlox.error(stmt.keyword, "Can't return from top-level code.");
-        if (stmt.value != null) resolve(stmt.value);
+        if (stmt.value != null) {
+            if (currentFunction == FunctionType.INIT) Jlox.error(stmt.keyword, "Can't return a value from initializer.");
+            resolve(stmt.value);
+        }
         return null;
     }
 
     @Override
     public Void visitBreakStmt(Stmt.Break stmt) {
         if (currentLoop == LoopType.NONE)
-            Jlox.error(stmt.keyword, "Can't return from top-level code.");
+            Jlox.error(stmt.keyword, "Can't break outside while- or for- loop.");
         return null;
     }
 
@@ -187,15 +245,15 @@ public class Resolver implements Stmt.Visitor<Void>, Expr.Visitor<Void> {
 
     void declare(Token token) {
         if (scopes.isEmpty()) return;
-        Map<String, Boolean> scope = scopes.peek();
+        Map<String, VARSTATE> scope = scopes.peek();
         if (scope.containsKey(token.lexeme))
             Jlox.error(token, "Variable already defined in this scope.");
-        scope.put(token.lexeme, false);
+        scope.put(token.lexeme, VARSTATE.DECLARED);
     }
 
     void define(Token token) {
         if (scopes.isEmpty()) return;
-        scopes.peek().put(token.lexeme, true);
+        scopes.peek().put(token.lexeme, VARSTATE.DEFINED);
     }
 
     void beginScope() {

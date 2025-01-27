@@ -10,11 +10,7 @@ import com.Jlox.Token;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.io.PrintStream;
+import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -24,6 +20,23 @@ import java.util.List;
 import java.util.regex.Pattern;
 
 public class SafeTests extends Tests {
+
+    protected static final String resourcesDirName = System.getProperty("resource.dir");
+    protected static final File resourcesDir = new File(resourcesDirName);
+
+    //private static final Pattern filesPattern = Pattern.compile("^Res\\d+.lox$");
+    private static final Pattern filesPattern = Pattern.compile("^_Res\\d+.lox$");
+
+    protected static String[] MakeFileTuple(File file) {
+        String inFile = file.getName();
+        String outFile = inFile.replace(".lox", ".txt");
+        String errFile = inFile.replace(".lox", ".err");
+        return new String[] {
+            inFile,
+            (new File(resourcesDirName, outFile)).exists() ? outFile : null,
+            (new File(resourcesDirName, errFile)).exists() ? errFile : null
+        };
+    }
 
     @Test
     public void ScannerTest() throws IOException {
@@ -60,49 +73,28 @@ public class SafeTests extends Tests {
         assertEquals(actual, expected);
     }
 
-    @DataProvider(name = "Test1")
-    String[][] Test1Data() {
+    @DataProvider(name = "StringData")
+    String[][] StringData() {
         return new String[][] {{"1. <= (1.+1.)", "true"}, {"\"3\"==\"2\"", "false"}, {"3+2", "5"}};
     }
 
-    @Test(dataProvider = "Test1")
-    public void InterpreterTest1(String input, String expectedOutput) {
-        OutputStream consoleContent = new ByteArrayOutputStream();
-        System.setOut(new PrintStream(consoleContent));
+    @Test(dataProvider = "StringData")
+    public void StringTest(String input, String expectedOutput) {
         Jlox.run(input);
-        String actualOutput = consoleContent.toString().trim();
+        String actualOutput = outContent.toString().trim();
         assertEquals(actualOutput, expectedOutput);
     }
 
-    @DataProvider(name = "Test2")
-    Iterator<String[]> Test2Data() {
-        Pattern pattern = Pattern.compile("^Res\\d+.lox$");
+    @DataProvider(name = "FileData")
+    Iterator<String[]> FileData() {
         return Arrays.stream(resourcesDir.listFiles())
-                .filter(file -> file.isFile() && pattern.matcher(file.getName()).matches())
-                .map(SafeTests::MakeFileTuple)
-                .iterator();
+                .filter(file -> file.isFile() && filesPattern.matcher(file.getName()).matches())
+                .map(SafeTests::MakeFileTuple).iterator();
     }
 
-    @Test(dataProvider = "Test2")
-    public void FileTest2(String inFileName, String outFileName, String errFileName)
+    @Test(dataProvider = "FileData")
+    public void FileTest(String inFileName, String outFileName, String errFileName)
             throws IOException {
-        OutputStream consoleContent = new ByteArrayOutputStream();
-        System.setOut(new PrintStream(consoleContent));
-        if (outFileName == null) return;
-
-        Jlox.runFile(Paths.get(resourcesDirName, inFileName));
-        String actual = consoleContent.toString();
-        String expectedOutput = Files.readString(Paths.get(resourcesDirName, outFileName));
-        assertEquals(actual, expectedOutput);
-    }
-
-    @Test(dataProvider = "Test2")
-    public void JustErrTest2(String inFileName, String outFileName, String errFileName)
-            throws IOException {
-        OutputStream errContent = new ByteArrayOutputStream();
-        System.setErr(new PrintStream(errContent));
-        if (errFileName == null) return;
-
         // TODO: Check the exit code.
         try {
             Jlox.runFile(Paths.get(resourcesDirName, inFileName));
@@ -110,49 +102,11 @@ public class SafeTests extends Tests {
             if (errFileName == null) throw err;
         }
 
-        String actualErr = errContent.toString();
-        String expectedErr = Files.readString(Paths.get(resourcesDirName, errFileName));
-        assertEquals(actualErr, expectedErr);
+        assertEquals(outContent.toString(), readFile(outFileName));
+        assertEquals(errContent.toString(), readFile(errFileName));
     }
 
-    // TODO: Merge stdout and stderr tests in the same method.
-    // @Test(dataProvider = "Test2")
-    public void FullTest2(String inFileName, String outFileName, String errFileName)
-            throws IOException {
-        OutputStream consoleContent = new ByteArrayOutputStream();
-        OutputStream errContent = new ByteArrayOutputStream();
-        System.setOut(new PrintStream(consoleContent));
-        System.setErr(new PrintStream(errContent));
-
-        // TODO: Check the exit code.
-        try {
-            Jlox.runFile(Paths.get(resourcesDirName, inFileName));
-        } catch (LoxError err) {
-            if (errFileName == null) throw err;
-        }
-        String actual = consoleContent.toString();
-        String expectedOutput =
-                (outFileName != null)
-                        ? Files.readString(Paths.get(resourcesDirName, outFileName))
-                        : "";
-        assertEquals(actual, expectedOutput);
-
-        String actualErr = errContent.toString();
-        String expectedErr =
-                (errFileName != null)
-                        ? Files.readString(Paths.get(resourcesDirName, errFileName))
-                        : "";
-        assertEquals(actualErr, expectedErr);
-    }
-
-    private static String[] MakeFileTuple(File file) {
-        String inFile = file.getName();
-        String outFile = inFile.replace(".lox", ".txt");
-        String errFile = inFile.replace(".lox", ".err");
-        return new String[] {
-            inFile,
-            (new File(resourcesDirName, outFile)).exists() ? outFile : null,
-            (new File(resourcesDirName, errFile)).exists() ? errFile : null
-        };
+    private static String readFile(String fileName) throws IOException {
+        return (fileName != null) ? Files.readString(Paths.get(resourcesDirName, fileName)) : "";
     }
 }

@@ -4,10 +4,15 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class Environment {
-    final Map<String, Object> values = new HashMap<>();
+    private final Map<String, Object> values = new HashMap<>();
     private final Environment enclosing;
 
     Environment() {
+        this.enclosing = null;
+    }
+
+    Environment(Map<String, Object> initVals) {
+        this.values.putAll(initVals);
         this.enclosing = null;
     }
 

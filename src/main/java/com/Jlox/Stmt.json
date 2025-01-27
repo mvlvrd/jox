@@ -16,7 +16,8 @@
   {"className": "Return",
   "Fields": [["Token", "keyword"], ["Expr", "value"]]},
   {"className":  "Break",
-  "Fields":  [["Token", "keyword"], ["Token", "name"]]}
-],
+   "Fields":  [["Token", "keyword"], ["Token", "name"]]},
+  {"className":  "Class",
+   "Fields":  [["Token", "name"], ["List<Stmt.Function>", "methods"]]}],
 "imports": ["java.util.List"]
 }

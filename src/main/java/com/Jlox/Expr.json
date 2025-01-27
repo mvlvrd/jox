@@ -14,7 +14,13 @@
  {"className": "Logical",
   "Fields": [["Expr", "left"], ["Token", "op"], ["Expr", "right"]]},
  {"className": "Call",
-  "Fields": [["Expr","callee"],["Token","lastParen"],["List<Expr>","args"]]}
+  "Fields": [["Expr","callee"],["Token","lastParen"],["List<Expr>","args"]]},
+ {"className": "Get",
+  "Fields": [["Expr", "obj"],["Token", "name"]]},
+ {"className":  "Set",
+  "Fields":  [["Expr","obj"], ["Token", "name"], ["Expr", "value"]]},
+ {"className":  "This",
+ "Fields": [["Token", "keyword"]]}
 ],
 "imports": ["java.util.List"]
 }

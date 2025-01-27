@@ -16,15 +16,18 @@ public class Jlox {
     static int MAX_ARITY = 255;
     static boolean DEBUG_MODE = false;
 
-    private static OperationMode opMode;
+    private static OperationMode opMode = OperationMode.NONE;
 
     enum OperationMode {
+        NONE,
         SCRIPT,
         CONSOLE,
         COMMAND
     }
 
     public static void run(String str) {
+        hadError = false;
+        hadRuntimeError = false;
         LoxScanner scanner = new LoxScanner(str);
         List<Token> tokens = scanner.scanTokens();
         if (DEBUG_MODE) tokens.forEach(System.out::println);
@@ -94,6 +97,7 @@ public class Jlox {
                 run(args[1]);
             } else {
                 System.err.println(UsageMessg);
+                throw new LoxError(64);
             }
         } else if (args.length == 1) {
             opMode = OperationMode.SCRIPT;

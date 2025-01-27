@@ -2,20 +2,13 @@ package com.Jlox;
 
 import com.Jlox.NativeFunctions.Clock;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
-import javax.swing.*;
+import static java.util.Map.entry;
 
 public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
 
-    final Environment globals = new Environment();
-
-    {
-        globals.define("clock", new Clock());
-    }
+    final Environment globals = new Environment(new HashMap<>(Map.ofEntries(entry("clock", new Clock()))));
 
     private Environment environment = globals;
     private final Map<Expr, Integer> locals = new HashMap<>();
@@ -64,6 +57,19 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
     }
 
     @Override
+    public Void visitClassStmt(Stmt.Class stmt) {
+        environment.define(stmt.name.lexeme, null);
+        Map<String, LoxFunction> methods = new HashMap<>();
+        for (Stmt.Function func: stmt.methods) {
+            boolean IsInitializer = func.name.lexeme.equals("init");
+            methods.put(func.name.lexeme, new LoxFunction(func, environment, IsInitializer));
+        }
+        LoxClass loxClass = new LoxClass(stmt.name.lexeme, methods);
+        environment.assign(stmt.name, loxClass);
+        return null;
+    }
+
+    @Override
     public Void visitFunctionStmt(Stmt.Function stmt) {
         LoxFunction function = new LoxFunction(stmt, environment);
         environment.define(stmt.name.lexeme, function);
@@ -83,9 +89,9 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
             while (truthy(evaluate(stmt.condition))) {
                 execute(stmt.body);
             }
-        } catch (Break ignored) {
-            if (!((ignored.name == null && stmt.name == null)
-                    || ignored.name.lexeme == stmt.name.lexeme)) throw ignored;
+        } catch (Break breakException) {
+            if (!((breakException.name == null && stmt.name == null)
+                    || Objects.equals(breakException.name.lexeme, stmt.name.lexeme))) throw breakException;
         }
         return null;
     }
@@ -130,6 +136,25 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
             argVals.add(evaluate(arg));
         }
         return function.call(this, argVals);
+    }
+
+    @Override
+    public Object visitGetExpr(Expr.Get expr) {
+        Object obj = evaluate(expr.obj);
+        if (obj instanceof LoxInstance inst) {
+            return inst.get(expr.name);
+        }
+        throw new RunTimeEvalError(expr.name, "Not a class instance.");
+    }
+
+    @Override
+    public Object visitSetExpr(Expr.Set expr) {
+        Object obj = evaluate(expr.obj);
+        if (!(obj instanceof LoxInstance inst))
+            throw new RunTimeEvalError(expr.name, "Cannot assign if not class instance.");
+        Object value = evaluate(expr.value);
+        inst.set(expr.name, value);
+        return value;
     }
 
     @Override
@@ -282,6 +307,11 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
         };
     }
 
+    @Override
+    public Object visitThisExpr(Expr.This expr) {
+        return lookUpVariable(expr.keyword, expr);
+    }
+
     static String makeString(Object obj) {
         if (obj == null) return "nil";
         return obj.toString();
@@ -289,7 +319,7 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
 
     private Boolean truthy(Object obj) {
         if (obj == null) return false;
-        else if (obj instanceof Boolean) return (boolean) obj;
+        else if (obj instanceof Boolean objB) return objB;
         return false; // TODO: Decide on truthiness.
     }
 
