@@ -1,17 +1,19 @@
 package com.Jlox;
 
+import static java.util.Map.entry;
+
 import com.Jlox.NativeFunctions.Clock;
 
-import java.util.Map;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.ArrayList;
+import java.util.Map;
 import java.util.Objects;
-import static java.util.Map.entry;
 
 public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
 
-    final Environment globals = new Environment(new HashMap<>(Map.ofEntries(entry("clock", new Clock()))));
+    final Environment globals =
+            new Environment(new HashMap<>(Map.ofEntries(entry("clock", new Clock()))));
 
     private Environment environment = globals;
     private final Map<Expr, Integer> locals = new HashMap<>();
@@ -64,15 +66,15 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
         environment.define(stmt.name.lexeme, null);
 
         LoxClass superClass = null;
-        if(stmt.superClass != null) {
+        if (stmt.superClass != null) {
             Object obj = evaluate(stmt.superClass);
             if (obj instanceof LoxClass) superClass = (LoxClass) obj;
             else throw new RunTimeEvalError(stmt.name, "Superclass must be a class.");
-            environment = new Environment(Map.of("super",  superClass), environment);
+            environment = new Environment(Map.of("super", superClass), environment);
         }
 
         Map<String, LoxFunction> methods = new HashMap<>();
-        for (Stmt.Function func: stmt.methods) {
+        for (Stmt.Function func : stmt.methods) {
             boolean IsInitializer = func.name.lexeme.equals("init");
             methods.put(func.name.lexeme, new LoxFunction(func, environment, IsInitializer));
         }
@@ -104,7 +106,8 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
             }
         } catch (Break breakException) {
             if (!((breakException.name == null && stmt.name == null)
-                    || Objects.equals(breakException.name.lexeme, stmt.name.lexeme))) throw breakException;
+                    || Objects.equals(breakException.name.lexeme, stmt.name.lexeme)))
+                throw breakException;
         }
         return null;
     }
@@ -332,7 +335,8 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
         LoxInstance obj = (LoxInstance) environment.getAt(-1, "this");
         LoxFunction func = superClass.findMethod(expr.method.lexeme);
         if (func == null)
-            throw new RunTimeEvalError(expr.keyword, "Undefined property " + expr.method.lexeme + ".");
+            throw new RunTimeEvalError(
+                    expr.keyword, "Undefined property " + expr.method.lexeme + ".");
         return func.bind(obj);
     }
 

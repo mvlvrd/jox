@@ -173,17 +173,20 @@ public class Resolver implements Stmt.Visitor<Void>, Expr.Visitor<Void> {
         ClassType enclosingClass = currentClass;
         currentClass = ClassType.CLASS;
         declare(stmt.name);
-        if (stmt.superClass!=null) {
+        if (stmt.superClass != null) {
             currentClass = ClassType.SUBCLASS;
-            if (stmt.superClass.name.lexeme.equals(stmt.name.lexeme)) Jlox.error(stmt.superClass.name, "A class cannot inherit from itself.");
+            if (stmt.superClass.name.lexeme.equals(stmt.name.lexeme))
+                Jlox.error(stmt.superClass.name, "A class cannot inherit from itself.");
             resolve(stmt.superClass);
             beginScope();
             scopes.peek().put("super", VARSTATE.DEFINED);
         }
         beginScope();
         scopes.peek().put("this", VARSTATE.DEFINED);
-        for (Stmt.Function func: stmt.methods) {
-            resolveFunction(func, func.name.lexeme.equals("init") ? FunctionType.INIT : FunctionType.METHOD);
+        for (Stmt.Function func : stmt.methods) {
+            resolveFunction(
+                    func,
+                    func.name.lexeme.equals("init") ? FunctionType.INIT : FunctionType.METHOD);
         }
         define(stmt.name);
         finishScope();
@@ -225,7 +228,8 @@ public class Resolver implements Stmt.Visitor<Void>, Expr.Visitor<Void> {
         if (currentFunction == FunctionType.NONE)
             Jlox.error(stmt.keyword, "Can't return from top-level code.");
         if (stmt.value != null) {
-            if (currentFunction == FunctionType.INIT) Jlox.error(stmt.keyword, "Can't return a value from initializer.");
+            if (currentFunction == FunctionType.INIT)
+                Jlox.error(stmt.keyword, "Can't return a value from initializer.");
             resolve(stmt.value);
         }
         return null;

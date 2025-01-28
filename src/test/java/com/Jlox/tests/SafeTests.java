@@ -25,7 +25,6 @@ public class SafeTests extends Tests {
     protected static final File resourcesDir = new File(resourcesDirName);
 
     private static final Pattern filesPattern = Pattern.compile("^Res\\d+.lox$");
-    //private static final Pattern filesPattern = Pattern.compile("^Res10.lox$");
 
     protected static String[] MakeFileTuple(File file) {
         String inFile = file.getName();
@@ -75,7 +74,9 @@ public class SafeTests extends Tests {
 
     @DataProvider(name = "StringData")
     String[][] StringData() {
-        return new String[][] {{"1. <= (1.+1.)", "true"}, {"\"3\"==\"2\"", "false"}, {"3+2", "5"}};
+        return new String[][] {
+            {"1. <= (1.+1.)", "true"}, {"\"3\"==\"2\"", "false"}, {"3+2", "5"}, {"!(1==2)", "true"}
+        };
     }
 
     @Test(dataProvider = "StringData")
@@ -89,7 +90,8 @@ public class SafeTests extends Tests {
     Iterator<String[]> FileData() {
         return Arrays.stream(resourcesDir.listFiles())
                 .filter(file -> file.isFile() && filesPattern.matcher(file.getName()).matches())
-                .map(SafeTests::MakeFileTuple).iterator();
+                .map(SafeTests::MakeFileTuple)
+                .iterator();
     }
 
     @Test(dataProvider = "FileData")

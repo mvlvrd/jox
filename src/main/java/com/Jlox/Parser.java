@@ -88,7 +88,8 @@ public class Parser {
 
     private Stmt classStmt() {
         Token name = consume(IDENTIFIER, "Expect class name");
-        //Expr.Variable superClass = match(LESS)? new Expr.Variable(consume(VAR, "Expect Superclass name.")): null;
+        // Expr.Variable superClass = match(LESS)? new Expr.Variable(consume(VAR, "Expect Superclass
+        // name.")): null;
         Expr.Variable superClass = null;
         if (match(LESS)) {
             Token _tkn = consume(IDENTIFIER, "Expect superclass name.");
