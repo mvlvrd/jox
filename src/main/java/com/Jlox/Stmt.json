@@ -18,6 +18,6 @@
   {"className":  "Break",
    "Fields":  [["Token", "keyword"], ["Token", "name"]]},
   {"className":  "Class",
-   "Fields":  [["Token", "name"], ["List<Stmt.Function>", "methods"]]}],
+   "Fields":  [["Token", "name"], ["Expr.Variable", "superClass"] ,["List<Stmt.Function>", "methods"]]}],
 "imports": ["java.util.List"]
 }

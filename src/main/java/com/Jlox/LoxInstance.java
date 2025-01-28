@@ -13,7 +13,7 @@ public class LoxInstance {
 
     Object get(Token name) {
         if (fields.containsKey(name.lexeme)) return fields.get(name.lexeme);
-        LoxFunction func = loxClass.findMethod(name);
+        LoxFunction func = loxClass.findMethod(name.lexeme);
         if (func != null) return func.bind(this);
         throw new RunTimeEvalError(
                 name, this + " does not contain " + name.lexeme + " field.");

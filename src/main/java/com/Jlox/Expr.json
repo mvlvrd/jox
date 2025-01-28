@@ -20,7 +20,9 @@
  {"className":  "Set",
   "Fields":  [["Expr","obj"], ["Token", "name"], ["Expr", "value"]]},
  {"className":  "This",
- "Fields": [["Token", "keyword"]]}
+ "Fields": [["Token", "keyword"]]},
+ {"className": "Super",
+ "Fields":[["Token","keyword"],["Token","method"]]}
 ],
 "imports": ["java.util.List"]
 }

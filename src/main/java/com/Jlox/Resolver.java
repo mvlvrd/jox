@@ -32,14 +32,13 @@ public class Resolver implements Stmt.Visitor<Void>, Expr.Visitor<Void> {
 
     private static enum ClassType {
         NONE,
-        CLASS
+        CLASS,
+        SUBCLASS
     }
 
     Resolver(Interpreter interpreter) {
         this.interpreter = interpreter;
     }
-
-
 
     void resolve(List<Stmt> stmts) {
         for (Stmt stmt : stmts) resolve(stmt);
@@ -174,6 +173,13 @@ public class Resolver implements Stmt.Visitor<Void>, Expr.Visitor<Void> {
         ClassType enclosingClass = currentClass;
         currentClass = ClassType.CLASS;
         declare(stmt.name);
+        if (stmt.superClass!=null) {
+            currentClass = ClassType.SUBCLASS;
+            if (stmt.superClass.name.lexeme.equals(stmt.name.lexeme)) Jlox.error(stmt.superClass.name, "A class cannot inherit from itself.");
+            resolve(stmt.superClass);
+            beginScope();
+            scopes.peek().put("super", VARSTATE.DEFINED);
+        }
         beginScope();
         scopes.peek().put("this", VARSTATE.DEFINED);
         for (Stmt.Function func: stmt.methods) {
@@ -181,6 +187,7 @@ public class Resolver implements Stmt.Visitor<Void>, Expr.Visitor<Void> {
         }
         define(stmt.name);
         finishScope();
+        if (stmt.superClass != null) finishScope();
         currentClass = enclosingClass;
         return null;
     }
@@ -197,6 +204,17 @@ public class Resolver implements Stmt.Visitor<Void>, Expr.Visitor<Void> {
         if (currentClass != ClassType.CLASS) {
             Jlox.error(expr.keyword, "Can not use 'this' outside a class.");
             return null;
+        }
+        resolveLocal(expr, expr.keyword);
+        return null;
+    }
+
+    @Override
+    public Void visitSuperExpr(Expr.Super expr) {
+        if (currentClass == ClassType.NONE) {
+            Jlox.error(expr.keyword, "Can not use 'super' outside a class.");
+        } else if (currentClass != ClassType.SUBCLASS) {
+            Jlox.error(expr.keyword, "Can not use 'super' in a base class.");
         }
         resolveLocal(expr, expr.keyword);
         return null;

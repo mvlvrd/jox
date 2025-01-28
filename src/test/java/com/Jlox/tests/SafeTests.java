@@ -24,8 +24,8 @@ public class SafeTests extends Tests {
     protected static final String resourcesDirName = System.getProperty("resource.dir");
     protected static final File resourcesDir = new File(resourcesDirName);
 
-    //private static final Pattern filesPattern = Pattern.compile("^Res\\d+.lox$");
-    private static final Pattern filesPattern = Pattern.compile("^_Res\\d+.lox$");
+    private static final Pattern filesPattern = Pattern.compile("^Res\\d+.lox$");
+    //private static final Pattern filesPattern = Pattern.compile("^Res10.lox$");
 
     protected static String[] MakeFileTuple(File file) {
         String inFile = file.getName();
@@ -38,7 +38,7 @@ public class SafeTests extends Tests {
         };
     }
 
-    @Test
+    @Test()
     public void ScannerTest() throws IOException {
         Path inFilePath = Paths.get(resourcesDirName, "scanTest.lox");
         OutputStream consoleContent = new ByteArrayOutputStream();

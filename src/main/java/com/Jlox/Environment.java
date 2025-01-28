@@ -5,15 +5,19 @@ import java.util.Map;
 
 public class Environment {
     private final Map<String, Object> values = new HashMap<>();
-    private final Environment enclosing;
+    protected final Environment enclosing;
 
     Environment() {
         this.enclosing = null;
     }
 
     Environment(Map<String, Object> initVals) {
+        this(initVals, null);
+    }
+
+    Environment(Map<String, Object> initVals, Environment enclosing) {
         this.values.putAll(initVals);
-        this.enclosing = null;
+        this.enclosing = enclosing;
     }
 
     Environment(Environment enclosing) {

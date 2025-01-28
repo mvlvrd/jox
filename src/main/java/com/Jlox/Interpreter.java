@@ -2,8 +2,11 @@ package com.Jlox;
 
 import com.Jlox.NativeFunctions.Clock;
 
-import java.util.*;
-
+import java.util.Map;
+import java.util.HashMap;
+import java.util.List;
+import java.util.ArrayList;
+import java.util.Objects;
 import static java.util.Map.entry;
 
 public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
@@ -59,12 +62,22 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
     @Override
     public Void visitClassStmt(Stmt.Class stmt) {
         environment.define(stmt.name.lexeme, null);
+
+        LoxClass superClass = null;
+        if(stmt.superClass != null) {
+            Object obj = evaluate(stmt.superClass);
+            if (obj instanceof LoxClass) superClass = (LoxClass) obj;
+            else throw new RunTimeEvalError(stmt.name, "Superclass must be a class.");
+            environment = new Environment(Map.of("super",  superClass), environment);
+        }
+
         Map<String, LoxFunction> methods = new HashMap<>();
         for (Stmt.Function func: stmt.methods) {
             boolean IsInitializer = func.name.lexeme.equals("init");
             methods.put(func.name.lexeme, new LoxFunction(func, environment, IsInitializer));
         }
-        LoxClass loxClass = new LoxClass(stmt.name.lexeme, methods);
+        LoxClass loxClass = new LoxClass(stmt.name.lexeme, superClass, methods);
+        if (superClass != null) environment = environment.enclosing;
         environment.assign(stmt.name, loxClass);
         return null;
     }
@@ -310,6 +323,17 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
     @Override
     public Object visitThisExpr(Expr.This expr) {
         return lookUpVariable(expr.keyword, expr);
+    }
+
+    @Override
+    public Object visitSuperExpr(Expr.Super expr) {
+        int distance = locals.get(expr);
+        LoxClass superClass = (LoxClass) environment.getAt(distance, "super");
+        LoxInstance obj = (LoxInstance) environment.getAt(-1, "this");
+        LoxFunction func = superClass.findMethod(expr.method.lexeme);
+        if (func == null)
+            throw new RunTimeEvalError(expr.keyword, "Undefined property " + expr.method.lexeme + ".");
+        return func.bind(obj);
     }
 
     static String makeString(Object obj) {
