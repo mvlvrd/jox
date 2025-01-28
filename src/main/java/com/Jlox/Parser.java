@@ -140,14 +140,16 @@ public class Parser {
     }
 
     private Stmt whileStmt() {
+        Token name = check(LEFT_PAREN) ? null : consume(IDENTIFIER, "Expect while loop name.");
         consume(LEFT_PAREN, "Expect opening paren '('");
         Expr condition = expression();
         consume(RIGHT_PAREN, "Expect closing paren ')'");
         Stmt body = statement();
-        return new Stmt.While(condition, body, null);
+        return new Stmt.While(condition, body, name);
     }
 
     private Stmt forStmt() {
+        Token name = check(LEFT_PAREN) ? null : consume(IDENTIFIER, "Expect while loop name.");
         consume(LEFT_PAREN, "Expect opening paren '('");
         Stmt init = null;
         if (match(VAR)) init = varDeclaration();
