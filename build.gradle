@@ -33,7 +33,7 @@ test {
         showStandardStreams = true
     }
     
-    jvmArgs '-Dresource.dir=src/test/resources/'
+    jvmArgs '-Dresource.dir=/home/valverde/github/jox/src/test/resources/'
 }
 
 task generateAST(type: Exec, group: "Custom") {

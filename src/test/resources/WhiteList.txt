@@ -1,0 +1,9 @@
+number/trailing_dot.lox
+number/decimal_point_at_eof.lox
+limit/stack_overflow.lox
+class/local_inherit_self.lox
+unexpected_character.lox
+function/missing_comma_in_parameters.lox
+function/body_must_be_block.lox
+field/set_on_num.lox
+field/get_on_num.lox

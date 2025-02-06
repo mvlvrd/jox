@@ -1,0 +1,23 @@
+var i=0;
+while (i<3) {
+print i;
+i = i+1;
+}
+
+i=0;
+while (i<3) {
+if (i==1) break;
+print i;
+i = i+1;
+}
+
+for (i=0; i<3; i=i+1) {
+print i;
+}
+
+for (i=0; i<3; i=i+1) {
+if (i==1) break;
+print i;
+}
+
+break dummy;
