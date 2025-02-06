@@ -38,7 +38,13 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
     }
 
     private Object evaluate(Expr expr) {
-        return expr.accept(this);
+        Object obj;
+        try {
+            obj = expr.accept(this);
+        } catch (ArithmeticException exception) {
+            obj = Float.NaN;
+        }
+        return obj;
     }
 
     private void execute(Stmt stmt) {
@@ -65,20 +71,20 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
     public Void visitClassStmt(Stmt.Class stmt) {
         environment.define(stmt.name.lexeme, null);
 
-        LoxClass superClass = null;
+        Object superClass = null;
         if (stmt.superClass != null) {
-            Object obj = evaluate(stmt.superClass);
-            if (obj instanceof LoxClass) superClass = (LoxClass) obj;
-            else throw new RunTimeEvalError(stmt.name, "Superclass must be a class.");
+            superClass = evaluate(stmt.superClass);
+            if (!(superClass instanceof LoxClass))
+                throw new RunTimeEvalError(stmt.name, "Superclass must be a class.");
             environment = new Environment(Map.of("super", superClass), environment);
         }
 
         Map<String, LoxFunction> methods = new HashMap<>();
-        for (Stmt.Function func : stmt.methods) {
-            boolean IsInitializer = func.name.lexeme.equals("init");
-            methods.put(func.name.lexeme, new LoxFunction(func, environment, IsInitializer));
+        for (Stmt.Function method : stmt.methods) {
+            boolean IsInitializer = method.name.lexeme.equals("init");
+            methods.put(method.name.lexeme, new LoxFunction(method, environment, IsInitializer));
         }
-        LoxClass loxClass = new LoxClass(stmt.name.lexeme, superClass, methods);
+        LoxClass loxClass = new LoxClass(stmt.name.lexeme, (LoxClass) superClass, methods);
         if (superClass != null) environment = environment.enclosing;
         environment.assign(stmt.name, loxClass);
         return null;
@@ -139,13 +145,13 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
     public Object visitCallExpr(Expr.Call expr) {
         Object callee = evaluate(expr.callee);
         if (!(callee instanceof LoxCallable function)) {
-            throw new RunTimeEvalError(expr.lastParen, "Expression not callable.");
+            throw new RunTimeEvalError(expr.lastParen, "Can only call functions and classes.");
         }
         List<Expr> args = expr.args;
         if (function.arity() != args.size()) {
             throw new RunTimeEvalError(
                     expr.lastParen,
-                    "Expected " + function.arity() + " arguments but got " + args.size());
+                    "Expected " + function.arity() + " arguments but got " + args.size() + ".");
         }
         List<Object> argVals = new ArrayList<>();
         for (Expr arg : args) {
@@ -160,14 +166,14 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
         if (obj instanceof LoxInstance inst) {
             return inst.get(expr.name);
         }
-        throw new RunTimeEvalError(expr.name, "Not a class instance.");
+        throw new RunTimeEvalError(expr.name, "Only instances have properties.");
     }
 
     @Override
     public Object visitSetExpr(Expr.Set expr) {
         Object obj = evaluate(expr.obj);
         if (!(obj instanceof LoxInstance inst))
-            throw new RunTimeEvalError(expr.name, "Cannot assign if not class instance.");
+            throw new RunTimeEvalError(expr.name, "Only instances have fields.");
         Object value = evaluate(expr.value);
         inst.set(expr.name, value);
         return value;
@@ -223,14 +229,48 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
         return switch (expr.op.type) {
             case PLUS -> {
                 Object object;
-                if (ltype.equals("f") && rtype.equals("f")) object = (double) lobj + (double) robj;
+                if (ltype == null || rtype == null)
+                    throw new RunTimeEvalError(
+                            expr.op, "Operands must be two numbers or two strings.");
+                else if (ltype.equals("f") && rtype.equals("f"))
+                    object = (double) lobj + (double) robj;
                 else if (ltype.equals("f") && rtype.equals("i"))
                     object = (double) lobj + (int) robj;
                 else if (ltype.equals("i") && rtype.equals("f"))
                     object = (int) lobj + (double) robj;
                 else if (ltype.equals("i") && rtype.equals("i")) object = (int) lobj + (int) robj;
                 else if (ltype.equals("s") && rtype.equals("s")) object = lobj + (String) robj;
-                else throw new RunTimeEvalError(expr.op, "Operation not valid for these operands.");
+                else
+                    throw new RunTimeEvalError(
+                            expr.op, "Operands must be two numbers or two strings.");
+                yield object;
+            }
+            case STAR -> {
+                Object object;
+                if (ltype == null || rtype == null)
+                    throw new RunTimeEvalError(expr.op, "Operands must be numbers.");
+                else if (ltype.equals("f") && rtype.equals("f"))
+                    object = (double) lobj * (double) robj;
+                else if (ltype.equals("f") && rtype.equals("i"))
+                    object = (double) lobj * (int) robj;
+                else if (ltype.equals("i") && rtype.equals("f"))
+                    object = (int) lobj * (double) robj;
+                else if (ltype.equals("i") && rtype.equals("i")) object = (int) lobj * (int) robj;
+                else throw new RunTimeEvalError(expr.op, "Operands must be numbers.");
+                yield object;
+            }
+            case SLASH -> {
+                Object object;
+                if (ltype == null || rtype == null)
+                    throw new RunTimeEvalError(expr.op, "Operands must be numbers.");
+                else if (ltype.equals("f") && rtype.equals("f"))
+                    object = (double) lobj / (double) robj;
+                else if (ltype.equals("f") && rtype.equals("i"))
+                    object = (double) lobj / (int) robj;
+                else if (ltype.equals("i") && rtype.equals("f"))
+                    object = (int) lobj / (double) robj;
+                else if (ltype.equals("i") && rtype.equals("i")) object = (int) lobj / (int) robj;
+                else throw new RunTimeEvalError(expr.op, "Operands must be numbers.");
                 yield object;
             }
             case MINUS -> {
@@ -241,10 +281,10 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
                 else if (ltype.equals("i") && rtype.equals("f"))
                     object = (int) lobj - (double) robj;
                 else if (ltype.equals("i") && rtype.equals("i")) object = (int) lobj - (int) robj;
-                else throw new RunTimeEvalError(expr.op, "Operation not valid for these operands.");
+                else throw new RunTimeEvalError(expr.op, "Operands must be numbers.");
                 yield object;
             }
-            case EQUAL_EQUAL -> lobj.equals(robj);
+            case EQUAL_EQUAL -> Objects.equals(lobj, robj);
             case LESS -> {
                 Object object;
                 if (ltype.equals("f") && rtype.equals("f")) object = (double) lobj < (double) robj;
@@ -253,7 +293,7 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
                 else if (ltype.equals("i") && rtype.equals("f"))
                     object = (int) lobj < (double) robj;
                 else if (ltype.equals("i") && rtype.equals("i")) object = (int) lobj < (int) robj;
-                else throw new RunTimeEvalError(expr.op, "Operation not valid for these operands.");
+                else throw new RunTimeEvalError(expr.op, "Operands must be numbers.");
                 yield object;
             }
             case GREATER -> {
@@ -264,7 +304,7 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
                 else if (ltype.equals("i") && rtype.equals("f"))
                     object = (int) lobj > (double) robj;
                 else if (ltype.equals("i") && rtype.equals("i")) object = (int) lobj > (int) robj;
-                else throw new RunTimeEvalError(expr.op, "Operation not valid for these operands.");
+                else throw new RunTimeEvalError(expr.op, "Operands must be numbers.");
                 yield object;
             }
             case LESS_EQUAL -> {
@@ -275,7 +315,7 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
                 else if (ltype.equals("i") && rtype.equals("f"))
                     object = (int) lobj <= (double) robj;
                 else if (ltype.equals("i") && rtype.equals("i")) object = (int) lobj <= (int) robj;
-                else throw new RunTimeEvalError(expr.op, "Operation not valid for these operands.");
+                else throw new RunTimeEvalError(expr.op, "Operands must be numbers.");
                 yield object;
             }
             case GREATER_EQUAL -> {
@@ -286,9 +326,10 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
                 else if (ltype.equals("i") && rtype.equals("f"))
                     object = (int) lobj >= (double) robj;
                 else if (ltype.equals("i") && rtype.equals("i")) object = (int) lobj >= (int) robj;
-                else throw new RunTimeEvalError(expr.op, "Operation not valid for these operands.");
+                else throw new RunTimeEvalError(expr.op, "Operands must be numbers.");
                 yield object;
             }
+            case BANG_EQUAL -> !Objects.equals(lobj, robj);
             default -> throw new RunTimeEvalError(expr.op, "Wrong binary operator.");
         };
     }
@@ -318,7 +359,7 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
                     default -> throw new RunTimeEvalError(expr.op, "Operand must be a number.");
                 }
             }
-            case BANG -> !(boolean) obj;
+            case BANG -> !truthy(obj);
             default -> throw new RunTimeEvalError(expr.op, "Not a unary operator.");
         };
     }
@@ -332,11 +373,11 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
     public Object visitSuperExpr(Expr.Super expr) {
         int distance = locals.get(expr);
         LoxClass superClass = (LoxClass) environment.getAt(distance, "super");
-        LoxInstance obj = (LoxInstance) environment.getAt(-1, "this");
+        LoxInstance obj = (LoxInstance) environment.getAt(distance - 1, "this");
         LoxFunction func = superClass.findMethod(expr.method.lexeme);
         if (func == null)
             throw new RunTimeEvalError(
-                    expr.keyword, "Undefined property " + expr.method.lexeme + ".");
+                    expr.keyword, "Undefined property '" + expr.method.lexeme + "'.");
         return func.bind(obj);
     }
 
@@ -348,11 +389,13 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
     private Boolean truthy(Object obj) {
         if (obj == null) return false;
         else if (obj instanceof Boolean objB) return objB;
-        return false; // TODO: Decide on truthiness.
+        return true;
     }
 
     private Object lookUpVariable(Token name, Expr expr) {
         Integer distance = locals.get(expr);
-        return distance == null ? globals.get(name) : environment.getAt(distance, name.lexeme);
+        Object obj =
+                distance == null ? globals.get(name) : environment.getAt(distance, name.lexeme);
+        return obj;
     }
 }

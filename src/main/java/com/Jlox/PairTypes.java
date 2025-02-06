@@ -15,6 +15,7 @@ class PairTypes {
 
     static String getType(Object obj) {
         return switch (obj) {
+            case null -> null;
             case Double f -> "f";
             case Integer i -> "i";
             case String s -> "s";

@@ -146,7 +146,7 @@ public class Resolver implements Stmt.Visitor<Void>, Expr.Visitor<Void> {
     public Void visitIfStmt(Stmt.If stmt) {
         resolve(stmt.condition);
         resolve(stmt.thenBranch);
-        if (stmt.elseBranch != null) resolve(stmt.thenBranch);
+        if (stmt.elseBranch != null) resolve(stmt.elseBranch);
         return null;
     }
 
@@ -172,11 +172,14 @@ public class Resolver implements Stmt.Visitor<Void>, Expr.Visitor<Void> {
     public Void visitClassStmt(Stmt.Class stmt) {
         ClassType enclosingClass = currentClass;
         currentClass = ClassType.CLASS;
+
         declare(stmt.name);
+        define(stmt.name);
+
         if (stmt.superClass != null) {
             currentClass = ClassType.SUBCLASS;
             if (stmt.superClass.name.lexeme.equals(stmt.name.lexeme))
-                Jlox.error(stmt.superClass.name, "A class cannot inherit from itself.");
+                Jlox.error(stmt.superClass.name, "A class can't inherit from itself.");
             resolve(stmt.superClass);
             beginScope();
             scopes.peek().put("super", VARSTATE.DEFINED);
@@ -188,7 +191,6 @@ public class Resolver implements Stmt.Visitor<Void>, Expr.Visitor<Void> {
                     func,
                     func.name.lexeme.equals("init") ? FunctionType.INIT : FunctionType.METHOD);
         }
-        define(stmt.name);
         finishScope();
         if (stmt.superClass != null) finishScope();
         currentClass = enclosingClass;
@@ -204,8 +206,8 @@ public class Resolver implements Stmt.Visitor<Void>, Expr.Visitor<Void> {
 
     @Override
     public Void visitThisExpr(Expr.This expr) {
-        if (currentClass != ClassType.CLASS) {
-            Jlox.error(expr.keyword, "Can not use 'this' outside a class.");
+        if (currentClass == ClassType.NONE) {
+            Jlox.error(expr.keyword, "Can't use 'this' outside of a class.");
             return null;
         }
         resolveLocal(expr, expr.keyword);
@@ -215,9 +217,9 @@ public class Resolver implements Stmt.Visitor<Void>, Expr.Visitor<Void> {
     @Override
     public Void visitSuperExpr(Expr.Super expr) {
         if (currentClass == ClassType.NONE) {
-            Jlox.error(expr.keyword, "Can not use 'super' outside a class.");
+            Jlox.error(expr.keyword, "Can't use 'super' outside of a class.");
         } else if (currentClass != ClassType.SUBCLASS) {
-            Jlox.error(expr.keyword, "Can not use 'super' in a base class.");
+            Jlox.error(expr.keyword, "Can't use 'super' in a class with no superclass.");
         }
         resolveLocal(expr, expr.keyword);
         return null;
@@ -229,7 +231,7 @@ public class Resolver implements Stmt.Visitor<Void>, Expr.Visitor<Void> {
             Jlox.error(stmt.keyword, "Can't return from top-level code.");
         if (stmt.value != null) {
             if (currentFunction == FunctionType.INIT)
-                Jlox.error(stmt.keyword, "Can't return a value from initializer.");
+                Jlox.error(stmt.keyword, "Can't return a value from an initializer.");
             resolve(stmt.value);
         }
         return null;
@@ -269,7 +271,7 @@ public class Resolver implements Stmt.Visitor<Void>, Expr.Visitor<Void> {
         if (scopes.isEmpty()) return;
         Map<String, VARSTATE> scope = scopes.peek();
         if (scope.containsKey(token.lexeme))
-            Jlox.error(token, "Variable already defined in this scope.");
+            Jlox.error(token, "Already a variable with this name in this scope.");
         scope.put(token.lexeme, VARSTATE.DECLARED);
     }
 

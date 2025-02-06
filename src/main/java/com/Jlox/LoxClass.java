@@ -1,6 +1,5 @@
 package com.Jlox;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -15,12 +14,6 @@ public class LoxClass implements LoxCallable {
         this.methods = methods;
     }
 
-    LoxClass(String name) {
-        this.name = name;
-        this.superClass = null;
-        this.methods = new HashMap<>();
-    }
-
     @Override
     public String toString() {
         return name;
@@ -28,12 +21,16 @@ public class LoxClass implements LoxCallable {
 
     @Override
     public Object call(Interpreter interpreter, List<Object> args) {
-        return new LoxInstance(this);
+        LoxInstance instance = new LoxInstance(this);
+        LoxFunction initFunc = findMethod("init");
+        if (initFunc != null) initFunc.bind(instance).call(interpreter, args);
+        return instance;
     }
 
     @Override
     public int arity() {
-        return 0;
+        LoxFunction initFunc = findMethod("init");
+        return (initFunc == null) ? 0 : initFunc.arity();
     }
 
     LoxFunction findMethod(String name) {

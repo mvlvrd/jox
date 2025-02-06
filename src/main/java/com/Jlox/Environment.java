@@ -32,7 +32,7 @@ public class Environment {
     Object get(Token name) {
         if (values.containsKey(name.lexeme)) return values.get(name.lexeme);
         if (enclosing != null) return enclosing.get(name);
-        throw new RunTimeEvalError(name, "Undefined variable:'" + name.lexeme + "'.");
+        throw new RunTimeEvalError(name, "Undefined variable '" + name.lexeme + "'.");
     }
 
     void assign(Token name, Object val) {
@@ -43,7 +43,7 @@ public class Environment {
             enclosing.assign(name, val);
             return;
         }
-        throw new RunTimeEvalError(name, "Undefined variable: '" + name.lexeme + "'.");
+        throw new RunTimeEvalError(name, "Undefined variable '" + name.lexeme + "'.");
     }
 
     void assignAt(int distance, Token name, Object value) {

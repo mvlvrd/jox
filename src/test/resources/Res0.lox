@@ -1,6 +1,0 @@
-print clock();
-
-var a = "outer";
-{
-  var a = a;
-}

@@ -10,41 +10,52 @@ import com.Jlox.Token;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import java.io.*;
+import java.io.File;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class SafeTests extends Tests {
 
     protected static final String resourcesDirName = System.getProperty("resource.dir");
-    protected static final File resourcesDir = new File(resourcesDirName);
+    protected static final Path resourcesDir = Paths.get(resourcesDirName);
+
+    protected static final Path FileTests = Paths.get(resourcesDirName, "tests");
+    private static final Path OfficialTestDirName = Paths.get(resourcesDirName, "officialTests");
 
     private static final Pattern filesPattern = Pattern.compile("^Res\\d+.lox$");
 
-    protected static String[] MakeFileTuple(File file) {
-        String inFile = file.getName();
+    private static final Pattern assertPattern =
+            Pattern.compile("// expect: (.*)$", Pattern.MULTILINE);
+    private static final Pattern errPattern =
+            Pattern.compile(
+                    "// (expect runtime error: (.*)|(\\[line \\d+\\] Error.*))$",
+                    Pattern.MULTILINE);
+    private static final Pattern floatPattern =
+            Pattern.compile("^// expect: \\*\\*FLOAT\\*\\*$", Pattern.MULTILINE);
+
+    private static String[] MakeFileTuple(Path path) {
+        String inFile = path.toString();
         String outFile = inFile.replace(".lox", ".txt");
         String errFile = inFile.replace(".lox", ".err");
         return new String[] {
             inFile,
-            (new File(resourcesDirName, outFile)).exists() ? outFile : null,
-            (new File(resourcesDirName, errFile)).exists() ? errFile : null
+            (new File(outFile)).exists() ? outFile : null,
+            (new File(errFile)).exists() ? errFile : null
         };
     }
 
     @Test()
     public void ScannerTest() throws IOException {
-        Path inFilePath = Paths.get(resourcesDirName, "scanTest.lox");
-        OutputStream consoleContent = new ByteArrayOutputStream();
-        System.setOut(new PrintStream(consoleContent));
+        Path inFilePath = Paths.get(resourcesDirName, "tests/scanTest.lox");
         List<Token> tokens = (new LoxScanner(Files.readString(inFilePath))).scanTokens();
         tokens.forEach(System.out::println);
-        String actual = consoleContent.toString();
+        String actual = outContent.toString();
         String expected =
                 """
                 LEFT_PAREN ( 0
@@ -73,7 +84,7 @@ public class SafeTests extends Tests {
     }
 
     @DataProvider(name = "StringData")
-    String[][] StringData() {
+    private String[][] StringData() {
         return new String[][] {
             {"1. <= (1.+1.)", "true"}, {"\"3\"==\"2\"", "false"}, {"3+2", "5"}, {"!(1==2)", "true"}
         };
@@ -87,9 +98,14 @@ public class SafeTests extends Tests {
     }
 
     @DataProvider(name = "FileData")
-    Iterator<String[]> FileData() {
-        return Arrays.stream(resourcesDir.listFiles())
-                .filter(file -> file.isFile() && filesPattern.matcher(file.getName()).matches())
+    Iterator<String[]> FileData() throws IOException {
+        return Files.walk(FileTests)
+                .filter(
+                        path ->
+                                Files.isRegularFile(path)
+                                        && filesPattern
+                                                .matcher(path.getFileName().toString())
+                                                .matches())
                 .map(SafeTests::MakeFileTuple)
                 .iterator();
     }
@@ -99,7 +115,7 @@ public class SafeTests extends Tests {
             throws IOException {
         // TODO: Check the exit code.
         try {
-            Jlox.runFile(Paths.get(resourcesDirName, inFileName));
+            Jlox.runFile(inFileName);
         } catch (LoxError err) {
             if (errFileName == null) throw err;
         }
@@ -108,7 +124,64 @@ public class SafeTests extends Tests {
         assertEquals(errContent.toString(), readFile(errFileName));
     }
 
+    @DataProvider(name = "OfficialData")
+    public Iterator<String[]> OfficialData() throws IOException {
+        Path pth = OfficialTestDirName;
+        // pth = Paths.get(OfficialTestDirName.toString(), "while/closure_in_body.lox");
+        return Files.walk(pth)
+                .filter(Files::isRegularFile)
+                .map(path -> new String[] {path.toString()})
+                .iterator();
+    }
+
+    // @Test(dataProvider = "OfficialData")
+    public void OfficialTest(String inFileName) throws IOException {
+        String inText = readFile(inFileName);
+        String expectedOut = MatchAssert(inText);
+        String expectedErr = MatchErr(inText);
+
+        // TODO: Check the exit code.
+        try {
+            Jlox.runFile(inFileName);
+        } catch (LoxError err) {
+            // if (!errTest.isEmpty()) throw err;
+        }
+        String actualOut = outContent.toString();
+        String actualErr = errContent.toString();
+        expectedOut = sanitizeFloat(expectedOut, actualOut);
+
+        assertEquals(actualOut, expectedOut);
+        assertEquals(actualErr, expectedErr);
+    }
+
+    private static String MatchAssert(String text) {
+        Matcher matcher = assertPattern.matcher(text);
+        StringBuilder bldr = new StringBuilder();
+        while (matcher.find()) {
+            bldr.append(matcher.group(1)).append("\n");
+        }
+        return bldr.toString();
+    }
+
+    private static String MatchErr(String text) {
+        Matcher matcher = errPattern.matcher(text);
+        StringBuilder bldr = new StringBuilder();
+        while (matcher.find()) {
+            bldr.append(matcher.group(2) != null ? matcher.group(2) : matcher.group(3))
+                    .append("\n");
+        }
+        return bldr.toString();
+    }
+
     private static String readFile(String fileName) throws IOException {
-        return (fileName != null) ? Files.readString(Paths.get(resourcesDirName, fileName)) : "";
+        if (fileName == null) return "";
+        Path path = Paths.get(fileName);
+        return Files.isRegularFile(path) ? Files.readString(path) : "";
+    }
+
+    private static String sanitizeFloat(String expected, String actual) {
+        return (floatPattern.matcher(expected).matches())
+                ? actual.replaceAll("[\\d]+(.[\\d]*)]", "**FLOAT**")
+                : actual;
     }
 }

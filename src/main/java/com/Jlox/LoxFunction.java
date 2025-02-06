@@ -35,17 +35,16 @@ public class LoxFunction implements LoxCallable {
         for (int i = 0; i < arity(); i++) {
             env.define(declaration.params.get(i).lexeme, args.get(i));
         }
-        Object obj = null;
         try {
             interpreter.executeBlock(declaration.body, env);
         } catch (Return ret) {
-            obj = IsInitializer ? closure.getAt(0, "this") : ret.value;
+            return IsInitializer ? closure.getAt(0, "this") : ret.value;
         }
-        return (IsInitializer) ? closure.getAt(0, "this") : obj;
+        return IsInitializer ? closure.getAt(0, "this") : null;
     }
 
     @Override
     public String toString() {
-        return "<fn " + declaration.name.lexeme + " >";
+        return "<fn " + declaration.name.lexeme + ">";
     }
 }

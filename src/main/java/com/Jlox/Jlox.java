@@ -17,12 +17,20 @@ public class Jlox {
     static boolean DEBUG_MODE = false;
 
     private static OperationMode opMode = OperationMode.NONE;
+    private static Phase phase = Phase.NONE;
 
     enum OperationMode {
         NONE,
         SCRIPT,
         CONSOLE,
         COMMAND
+    }
+
+    enum Phase {
+        NONE,
+        PARSER,
+        RESOLVER,
+        INTERPRETER
     }
 
     public static void run(String str) {
@@ -32,19 +40,28 @@ public class Jlox {
         List<Token> tokens = scanner.scanTokens();
         if (DEBUG_MODE) tokens.forEach(System.out::println);
         Parser parser = new Parser(tokens);
+        Resolver resolver = new Resolver(interpreter);
         // TODO: This should be more robust.
         if (isListOfStmts(tokens)) {
+            phase = Phase.PARSER;
             List<Stmt> stmts = parser.parse();
             if (DEBUG_MODE) System.out.println(stmts.stream().map(astPrinter::print));
             if (hadError) return;
-            Resolver resolver = new Resolver(interpreter);
+            phase = Phase.RESOLVER;
             resolver.resolve(stmts);
             if (hadError) return;
+            phase = Phase.INTERPRETER;
             interpreter.interpret(stmts);
-        } else {
+        } else if (!(tokens.isEmpty()
+                || (tokens.size() == 1 && tokens.getFirst().type == TokenType.EOF))) {
+            phase = Phase.PARSER;
             Expr expr = parser.parseSingleExpr();
             if (DEBUG_MODE) System.out.println(astPrinter.print(expr));
             if (hadError) return;
+            phase = Phase.RESOLVER;
+            resolver.resolve(expr);
+            if (hadError) return;
+            phase = Phase.INTERPRETER;
             interpreter.interpret(expr);
         }
     }
@@ -72,39 +89,52 @@ public class Jlox {
         }
     }
 
+    static void report(int line, String where, String message) {
+        if (DEBUG_MODE) System.err.println("Current phase: " + phase);
+        System.err.println("[line " + (line + 1) + "] Error" + where + ": " + message);
+    }
+
     static void error(int line, String errorMsg) {
         hadError = true;
-        System.err.println("Error at line: " + line + " " + errorMsg);
+        report(line, "", errorMsg);
     }
 
     static void error(Token token, String errorMsg) {
         hadError = true;
-        System.err.println("Error at line: " + token.line + ": " + token.lexeme + ". " + errorMsg);
+        if (token.type == TokenType.EOF) {
+            report(token.line, " at end", errorMsg);
+        } else {
+            report(token.line, " at '" + token.lexeme + "'", errorMsg);
+        }
     }
 
     static void runTimeError(RunTimeEvalError err) {
         hadRuntimeError = true;
-        System.err.println(err.getMessage() + "\n[Line:" + err.token.line + "]");
+        // TODO: Add line after passing tests.
+        System.err.println(err.getMessage()); // + "\n[Line:" + err.token.line + "]");
+    }
+
+    private static void ArgErr() {
+        System.err.println(UsageMessg);
+        throw new LoxError(64);
     }
 
     private static void checkArgs(String[] args) throws IOException {
-        if (args.length > 2) {
-            System.err.println(UsageMessg);
-            throw new LoxError(64);
-        } else if (args.length == 2) {
-            if (args[0].equals("-c")) {
-                opMode = OperationMode.COMMAND;
-                run(args[1]);
-            } else {
-                System.err.println(UsageMessg);
-                throw new LoxError(64);
-            }
-        } else if (args.length == 1) {
-            opMode = OperationMode.SCRIPT;
-            runFile(args[0]);
-        } else {
+        if (args.length == 0) {
             opMode = OperationMode.CONSOLE;
             runPrompt();
+        } else if (args[0].equals("-c")) {
+            opMode = OperationMode.COMMAND;
+            if (args.length < 2) ArgErr();
+            String command = args[1];
+            if (args.length == 3 && args[2].equals("--debug")) DEBUG_MODE = true;
+            else if (args.length > 2) ArgErr();
+            run(command);
+        } else {
+            opMode = OperationMode.SCRIPT;
+            if (args.length == 2 && args[1].equals("--debug")) DEBUG_MODE = true;
+            else if (args.length > 2) ArgErr();
+            runFile(args[0]);
         }
     }
 
@@ -117,6 +147,7 @@ public class Jlox {
     }
 
     private static boolean isListOfStmts(List<Token> tokens) {
+        if (tokens.size() <= 1) return false;
         TokenType tokenType = tokens.get(tokens.size() - 2).type;
         return (tokenType == TokenType.SEMICOLON || tokenType == TokenType.RIGHT_BRACE);
     }

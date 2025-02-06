@@ -88,7 +88,8 @@ public class LoxScanner {
                 else if (isDigit(chr)) parseNumber();
                 else if (isAlpha(chr)) parseIdentifier();
                 else
-                    Jlox.error(line, String.format("Unexpected character %s", src.charAt(current)));
+                    Jlox.error(
+                            line, String.format("Unexpected character %s.", src.charAt(current)));
             }
         }
     }
@@ -101,7 +102,7 @@ public class LoxScanner {
     void parseString() {
         int origLine = line;
         while (peek() != '"' && notEOF()) advance();
-        if (!notEOF()) Jlox.error(origLine, "Unterminated string");
+        if (!notEOF()) Jlox.error(origLine, "Unterminated string.");
         advance();
         addStringToken(origLine);
     }
