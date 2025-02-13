@@ -1,0 +1,17 @@
+class Base {
+  init(a){print "fddf"; this.a = a;}
+}
+
+class CL < Base {
+ init(a,b) {print "XXX";
+            super.init(a);
+	    print "YYY";
+            this.b=b;}
+}
+
+var base = Base("KK");
+print base.a;
+
+var cl = CL("kk", "kk2");
+print cl.a;
+print cl.b;
